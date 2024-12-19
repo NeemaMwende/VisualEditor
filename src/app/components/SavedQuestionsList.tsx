@@ -1,52 +1,20 @@
-// types.ts
-interface Question {
-  id: number;
-  title: string;
-  content: string;
-  isExpanded: boolean;
-}
-
 // SavedQuestionsList.tsx
-import React, { useState } from 'react';
+import React from 'react';
 
 interface SavedQuestionsListProps {
   questions: Question[];
-  setCurrentContent: (content: string) => void;
+  onEdit: (question: Question) => void;
   setQuestions: (questions: Question[]) => void;
-  currentlyEditing: number | null;
-  setCurrentlyEditing: (id: number | null) => void;
 }
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   questions,
-  setCurrentContent,
-  setQuestions,
-  currentlyEditing,
-  setCurrentlyEditing
+  onEdit,
+  setQuestions
 }) => {
-  const [newTitle, setNewTitle] = useState('');
-  
   const handleDelete = (id: number) => {
     const updatedQuestions = questions.filter(q => q.id !== id);
     setQuestions(updatedQuestions);
-  };
-
-  const handleEdit = (question: Question) => {
-    setCurrentlyEditing(question.id);
-    setCurrentContent(question.content);
-  };
-
-  const handleSaveEdit = (editedContent: string) => {
-    if (currentlyEditing === null) return;
-
-    const updatedQuestions = questions.map(q =>
-      q.id === currentlyEditing
-        ? { ...q, content: editedContent }
-        : q
-    );
-    setQuestions(updatedQuestions);
-    setCurrentlyEditing(null);
-    setCurrentContent('');
   };
 
   const handleToggleExpand = (id: number) => {
@@ -57,80 +25,68 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     ));
   };
 
-  const promptForTitle = () => {
-    return new Promise<string>((resolve) => {
-      const title = window.prompt('Enter a title for this question:', '');
-      resolve(title || 'Untitled Question');
-    });
-  };
-
   return (
-    <div className="mt-8">
-      <h3 className="text-2xl font-semibold mb-4">Saved Questions</h3>
-      
+    <div className="space-y-4">
       {questions.length === 0 ? (
-        <p className="text-gray-500 italic">No saved questions yet.</p>
+        <p className="text-center text-gray-500 italic">No questions created yet.</p>
       ) : (
-        <div className="space-y-4">
-          {questions.map((question, index) => (
-            <div
-              key={question.id}
-              className="border rounded-lg shadow-sm overflow-hidden"
+        questions.map((question) => (
+          <div
+            key={question.id}
+            className="border rounded-lg shadow-sm overflow-hidden"
+          >
+            <div 
+              className="bg-gray-50 p-4 flex items-center justify-between cursor-pointer"
+              onClick={() => handleToggleExpand(question.id)}
             >
-              {/* Question Header */}
-              <div 
-                className="bg-gray-50 p-4 flex items-center justify-between cursor-pointer"
-                onClick={() => handleToggleExpand(question.id)}
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="font-mono text-gray-500">#{question.id}</span>
-                  <h4 className="font-medium text-lg">{question.title}</h4>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {currentlyEditing === question.id ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSaveEdit(question.content);
-                      }}
-                      className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+              <div className="flex items-center space-x-3">
+                <span className="font-mono text-gray-500">#{question.id}</span>
+                <h4 className="font-medium text-lg">{question.title}</h4>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(question);
+                  }}
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(question.id);
+                  }}
+                  className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            {question.isExpanded && (
+              <div className="p-4 bg-white">
+                <div className="font-medium mb-2">{question.question}</div>
+                <div className="space-y-2">
+                  {question.answers.map((answer, index) => (
+                    <div
+                      key={index}
+                      className={`p-2 rounded ${
+                        answer.isCorrect ? 'bg-green-50 border-green-200' : 'bg-gray-50'
+                      }`}
                     >
-                      Save Changes
-                    </button>
-                  ) : (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(question);
-                      }}
-                      className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(question.id);
-                    }}
-                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-                  >
-                    Delete
-                  </button>
+                      {String.fromCharCode(65 + index)}) {answer.text}
+                      {answer.isCorrect && (
+                        <span className="ml-2 text-green-600">✓</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Question Content */}
-              {question.isExpanded && (
-                <div className="p-4 bg-white">
-                  <pre className="whitespace-pre-wrap font-mono text-sm">
-                    {question.content}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
+        ))
       )}
     </div>
   );

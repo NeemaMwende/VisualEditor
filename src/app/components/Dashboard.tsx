@@ -3,167 +3,191 @@ import React, { useState, useEffect } from 'react';
 import QuestionEditor from './QuestionEditor';
 import SavedQuestionsList from './SavedQuestionsList';
 
-// Define Question type
+interface Answer {
+  id: number;
+  text: string;
+}
+
 interface Question {
   id: number;
   title: string;
-  content: string;
+  question: string;
+  answers: Answer[];
   isExpanded: boolean;
 }
 
 const Dashboard = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [plainContent, setPlainContent] = useState('');
-  const [markdownContent, setMarkdownContent] = useState('');
   const [currentlyEditing, setCurrentlyEditing] = useState<number | null>(null);
   const [nextId, setNextId] = useState(1);
+  const [showEditor, setShowEditor] = useState(false);
+  const [initialData, setInitialData] = useState<{ question: string; answers: Answer[] } | null>(null);
+  const [markdownContent, setMarkdownContent] = useState('');
+  const [showMarkdown, setShowMarkdown] = useState(false);
 
-  // Convert plain text to markdown whenever content changes
+  // Load questions from local storage when the component mounts
   useEffect(() => {
-    const convertToMarkdown = (text: string) => {
-      return text
-        .split('\n')
-        .map(line => {
-          const trimmedLine = line.trim();
-          if (trimmedLine.startsWith('Q:')) return `## ${trimmedLine}`;
-          if (trimmedLine.startsWith('A:')) return `* ${trimmedLine}`;
-          return line;
-        })
-        .join('\n');
-    };
+    const savedQuestions = localStorage.getItem('questions');
+    if (savedQuestions) {
+      const parsedQuestions = JSON.parse(savedQuestions);
+      setQuestions(parsedQuestions);
+      setNextId(parsedQuestions.length ? parsedQuestions[parsedQuestions.length - 1].id + 1 : 1);
+    }
+  }, []);
 
-    const newMarkdown = convertToMarkdown(plainContent);
-    setMarkdownContent(newMarkdown);
-  }, [plainContent]);
+  // Save questions to local storage whenever the questions state changes
+  useEffect(() => {
+    localStorage.setItem('questions', JSON.stringify(questions));
+  }, [questions]);
 
-  // Prompt for question title
+  // Prompt for a title when creating a new question
   const promptForTitle = async () => {
-    const title = window.prompt('Enter a title for this question:', '');
+    const title = window.prompt('Enter a title for the question:', 'New Question');
     return title || 'Untitled Question';
   };
 
-  // Handle file upload
+  // Save a new or edited question
+  const handleSaveQuestion = async (questionData: { question: string; answers: Answer[] }) => {
+    if (questionData.question.trim()) {
+      if (currentlyEditing !== null) {
+        const updatedQuestions = questions.map(q =>
+          q.id === currentlyEditing
+            ? { ...q, question: questionData.question, answers: questionData.answers }
+            : q
+        );
+        setQuestions(updatedQuestions);
+        setCurrentlyEditing(null);
+      } else {
+        const title = await promptForTitle();
+        const newQuestion: Question = {
+          id: nextId,
+          title,
+          question: questionData.question,
+          answers: questionData.answers,
+          isExpanded: false,
+        };
+        setQuestions([...questions, newQuestion]);
+        setNextId(nextId + 1);
+      }
+      setShowEditor(false);
+      setInitialData(null);
+      updateMarkdownContent();
+    }
+  };
+
+  // Edit an existing question
+  const handleEdit = (question: Question) => {
+    setCurrentlyEditing(question.id);
+    setInitialData({ question: question.question, answers: question.answers });
+    setShowEditor(true);
+  };
+
+  // Create a new question
+  const handleNewQuestion = () => {
+    setCurrentlyEditing(null);
+    setInitialData(null);
+    setShowEditor(true);
+  };
+
+  // Upload a markdown file
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
         const text = await file.text();
-        setMarkdownContent(text); // Display markdown in preview
-        
-        // Convert markdown to plain text for editor
-        const plainText = text
-          .replace(/^##\s*(Q:.*)$/gm, '$1')
-          .replace(/^\*\s*(A:.*)$/gm, '$1')
-          .replace(/^[-*]\s*/gm, '')
-          .trim();
-        
-        setPlainContent(plainText);
+        setMarkdownContent(text);
+        parseMarkdownToQuestions(text);
       } catch (error) {
         console.error('Error reading file:', error);
       }
     }
   };
 
-  // Handle saving questions
-  const handleSaveQuestion = async () => {
-    if (markdownContent.trim()) {
-      if (currentlyEditing !== null) {
-        // Update existing question
-        const updatedQuestions = questions.map(q =>
-          q.id === currentlyEditing
-            ? { ...q, content: markdownContent }
-            : q
-        );
-        setQuestions(updatedQuestions);
-        setCurrentlyEditing(null);
-      } else {
-        // Create new question
-        const title = await promptForTitle();
-        const newQuestion: Question = {
-          id: nextId,
-          title,
-          content: markdownContent,
-          isExpanded: false
-        };
-        setQuestions([...questions, newQuestion]);
-        setNextId(nextId + 1);
+  // Parse markdown content to extract questions
+  const parseMarkdownToQuestions = (markdown: string) => {
+    const lines = markdown.split('\n');
+    const parsedQuestions: Question[] = [];
+    let currentQuestion = '';
+    let currentAnswers: Answer[] = [];
+    let currentId = 1;
+
+    lines.forEach(line => {
+      if (line.startsWith('## ')) {
+        if (currentQuestion) {
+          parsedQuestions.push({
+            id: currentId++,
+            title: currentQuestion,
+            question: currentQuestion,
+            answers: currentAnswers,
+            isExpanded: false,
+          });
+        }
+        currentQuestion = line.slice(3).trim();
+        currentAnswers = [];
+      } else if (line.startsWith('* ')) {
+        currentAnswers.push({ id: currentAnswers.length + 1, text: line.slice(2).trim() });
       }
-      setPlainContent('');
-      setMarkdownContent('');
+    });
+
+    if (currentQuestion) {
+      parsedQuestions.push({
+        id: currentId++,
+        title: currentQuestion,
+        question: currentQuestion,
+        answers: currentAnswers,
+        isExpanded: false,
+      });
     }
+
+    setQuestions(parsedQuestions);
+    setNextId(currentId);
   };
 
-  // Export markdown file
-  const handleExport = () => {
-    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'questions.md';
-    a.click();
-    window.URL.revokeObjectURL(url);
+  // Update markdown content based on current questions
+  const updateMarkdownContent = () => {
+    const newMarkdown = questions
+      .map(q => {
+        const answers = q.answers.map(a => `* ${a.text}`).join('\n');
+        return `## ${q.title}\n${answers}`;
+      })
+      .join('\n\n');
+    setMarkdownContent(newMarkdown);
+  };
+
+  // Toggle markdown view
+  const toggleMarkdownView = () => {
+    setShowMarkdown(!showMarkdown);
   };
 
   return (
     <div className="container mx-auto p-8">
-      <h1 className="text-4xl font-bold mb-2 text-center">Question Editor Dashboard</h1>
-      <h2 className="text-lg mb-6 text-center">Let's create some questions!</h2>
-
-      <div className="flex gap-8 mb-6">
-        <QuestionEditor 
-          content={plainContent} 
-          setContent={setPlainContent} 
-        />
-
-        <div className="w-1/2">
-          <h3 className="text-2xl font-semibold mb-2">Markdown Preview</h3>
-          <div className="border rounded-md p-4 h-96 bg-gray-50 overflow-auto">
-            <pre className="whitespace-pre-wrap font-mono text-sm">
-              {markdownContent}
-            </pre>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-4 justify-center mb-6">
-        <div className="flex-1 max-w-md">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Question Editor</h1>
+        <div className="flex gap-4">
           <input
             type="file"
             accept=".md"
             onChange={handleFileUpload}
-            className="block w-full text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-md file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-50 file:text-blue-700
-              hover:file:bg-blue-100"
+            className="block text-sm text-gray-500 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
+          <button onClick={handleNewQuestion} className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
+            Create New Question
+          </button>
+          <button onClick={toggleMarkdownView} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+            {showMarkdown ? 'View Questions' : 'View Markdown'}
+          </button>
         </div>
-        <button
-          onClick={handleSaveQuestion}
-          className={`px-6 py-2 rounded-md text-white ${
-            currentlyEditing !== null 
-              ? 'bg-green-500 hover:bg-green-600' 
-              : 'bg-blue-500 hover:bg-blue-600'
-          }`}
-        >
-          {currentlyEditing !== null ? 'Save Changes' : 'Save Question'}
-        </button>
-        <button
-          onClick={handleExport}
-          className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600"
-        >
-          Download Markdown
-        </button>
       </div>
 
-      <SavedQuestionsList
-        questions={questions}
-        setCurrentContent={setPlainContent}
-        setQuestions={setQuestions}
-        currentlyEditing={currentlyEditing}
-        setCurrentlyEditing={setCurrentlyEditing}
-      />
+      {showMarkdown ? (
+        <div className="border rounded-md p-4 h-96 bg-gray-50 overflow-auto">
+          <pre className="whitespace-pre-wrap font-mono text-sm">{markdownContent}</pre>
+        </div>
+      ) : showEditor ? (
+        <QuestionEditor onSave={handleSaveQuestion} initialData={initialData} isEditing={currentlyEditing !== null} />
+      ) : (
+        <SavedQuestionsList questions={questions} onEdit={handleEdit} setQuestions={setQuestions} />
+      )}
     </div>
   );
 };
