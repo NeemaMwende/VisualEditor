@@ -36,7 +36,7 @@ const FileActions: React.FC<FileActionsProps> = ({ content, onSave, setContent }
       <button onClick={handleDownloadMarkdown} className="bg-green-500 text-white px-4 py-2 rounded">
         Download as Markdown
       </button>
-      <input type="file" accept=".md" onChange={handleUpload} />
+      <input type="file" accept=".md" onChange={handleUpload} className="border p-2 rounded" />
     </div>
   );
 };
