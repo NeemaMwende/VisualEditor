@@ -14,6 +14,11 @@ interface Question {
   question: string;
   answers: Answer[];
   isExpanded: boolean;
+  difficulty: number; 
+  tags: string[]; 
+  initialData: Answer[];
+  questions: string;
+  onEdit: string;
 }
 
 const Dashboard = () => {
@@ -23,7 +28,9 @@ const Dashboard = () => {
   const [showEditor, setShowEditor] = useState(false);
   const [initialData, setInitialData] = useState<{ question: string; answers: Answer[] } | null>(null);
   const [markdownContent, setMarkdownContent] = useState('');
-  const [showMarkdown, setShowMarkdown] = useState(false);
+  const [isFileUploaded, setIsFileUploaded] = useState(false);
+  const [viewMarkdown, setViewMarkdown] = useState(false);
+
 
   // Load questions from local storage when the component mounts
   useEffect(() => {
@@ -49,10 +56,14 @@ const Dashboard = () => {
   // Save a new or edited question
   const handleSaveQuestion = async (questionData: { question: string; answers: Answer[] }) => {
     if (questionData.question.trim()) {
+      const difficulty = parseInt(prompt('Enter difficulty level (1, 2, or 3):', '1') || '1');
+      const tagsInput = prompt('Enter tags (comma-separated):', '') || '';
+      const tags = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag);
+  
       if (currentlyEditing !== null) {
         const updatedQuestions = questions.map(q =>
           q.id === currentlyEditing
-            ? { ...q, question: questionData.question, answers: questionData.answers }
+            ? { ...q, question: questionData.question, answers: questionData.answers, difficulty, tags }
             : q
         );
         setQuestions(updatedQuestions);
@@ -64,16 +75,20 @@ const Dashboard = () => {
           title,
           question: questionData.question,
           answers: questionData.answers,
+          difficulty,
+          tags,
           isExpanded: false,
         };
         setQuestions([...questions, newQuestion]);
         setNextId(nextId + 1);
       }
+  
       setShowEditor(false);
       setInitialData(null);
       updateMarkdownContent();
     }
   };
+  
 
   // Edit an existing question
   const handleEdit = (question: Question) => {
@@ -97,6 +112,7 @@ const Dashboard = () => {
         const text = await file.text();
         setMarkdownContent(text);
         parseMarkdownToQuestions(text);
+        setIsFileUploaded(true);
       } catch (error) {
         console.error('Error reading file:', error);
       }
@@ -109,8 +125,10 @@ const Dashboard = () => {
     const parsedQuestions: Question[] = [];
     let currentQuestion = '';
     let currentAnswers: Answer[] = [];
+    let currentDifficulty = 1;
+    let currentTags: string[] = [];
     let currentId = 1;
-
+  
     lines.forEach(line => {
       if (line.startsWith('## ')) {
         if (currentQuestion) {
@@ -119,45 +137,51 @@ const Dashboard = () => {
             title: currentQuestion,
             question: currentQuestion,
             answers: currentAnswers,
+            difficulty: currentDifficulty,
+            tags: currentTags,
             isExpanded: false,
           });
         }
         currentQuestion = line.slice(3).trim();
         currentAnswers = [];
+        currentDifficulty = 1;
+        currentTags = [];
       } else if (line.startsWith('* ')) {
         currentAnswers.push({ id: currentAnswers.length + 1, text: line.slice(2).trim() });
+      } else if (line.startsWith('**Difficulty:**')) {
+        currentDifficulty = parseInt(line.split(':')[1].trim()) || 1;
+      } else if (line.startsWith('**Tags:**')) {
+        currentTags = line.split(':')[1].trim().split(',').map(tag => tag.trim());
       }
     });
-
+  
     if (currentQuestion) {
       parsedQuestions.push({
         id: currentId++,
         title: currentQuestion,
         question: currentQuestion,
         answers: currentAnswers,
+        difficulty: currentDifficulty,
+        tags: currentTags,
         isExpanded: false,
       });
     }
-
+  
     setQuestions(parsedQuestions);
     setNextId(currentId);
   };
+  
 
-  // Update markdown content based on current questions
   const updateMarkdownContent = () => {
     const newMarkdown = questions
       .map(q => {
-        const answers = q.answers.map(a => `* ${a.text}`).join('\n');
-        return `## ${q.title}\n${answers}`;
+        const answers = q.answers.map(a => (a.text.startsWith('```') ? a.text : `* ${a.text}`)).join('\n');
+        return `## ${q.title}\n**Difficulty:** ${q.difficulty}\n**Tags:** ${q.tags.join(', ')}\n${answers}`;
       })
       .join('\n\n');
     setMarkdownContent(newMarkdown);
   };
-
-  // Toggle markdown view
-  const toggleMarkdownView = () => {
-    setShowMarkdown(!showMarkdown);
-  };
+  
 
   return (
     <div className="container mx-auto p-8">
@@ -173,13 +197,20 @@ const Dashboard = () => {
           <button onClick={handleNewQuestion} className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
             Create New Question
           </button>
-          <button onClick={toggleMarkdownView} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-            {showMarkdown ? 'View Questions' : 'View Markdown'}
-          </button>
+          {isFileUploaded && (
+            <>
+              <button onClick={() => setViewMarkdown(true)} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                View Markdown
+              </button>
+              <button onClick={() => setViewMarkdown(false)} className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">
+                View Questions
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {showMarkdown ? (
+      {viewMarkdown && isFileUploaded ? (
         <div className="border rounded-md p-4 h-96 bg-gray-50 overflow-auto">
           <pre className="whitespace-pre-wrap font-mono text-sm">{markdownContent}</pre>
         </div>
