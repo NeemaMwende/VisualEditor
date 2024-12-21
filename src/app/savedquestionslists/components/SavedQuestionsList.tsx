@@ -275,7 +275,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                   : 'bg-gray-200 text-gray-700'
               }`}
             >
-              Questions View
+              Questions 
             </button>
             <button
               onClick={() => setViewMode('markdown')}
@@ -285,7 +285,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                   : 'bg-gray-200 text-gray-700'
               }`}
             >
-              Markdown View
+              Markdown 
             </button>
           </div>
         </div>

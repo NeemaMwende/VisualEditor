@@ -1,3 +1,4 @@
+// QuestionEditor.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft } from 'lucide-react';
 import {
@@ -6,8 +7,8 @@ import {
   parseMarkdownContent,
   saveQuestionToLocalStorage
 } from '../../../utils/markdownUtils';
-import { useRouter } from 'next/navigation';
-
+//import { useRouter } from 'next/router';
+import Link from 'next/link';
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
@@ -32,10 +33,14 @@ interface Question {
   type?: 'question' | 'markdown';
 }
 
+interface FileData {
+  name: string;
+  content: string;
+  path: string;
+}
+
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onSave,
-  // onBack,
-  //onEditQuestion,
   initialData,
   isEditing = false
 }) => {
@@ -55,6 +60,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  //const router = useRouter();
 
   useEffect(() => {
     if (initialData) {
@@ -112,31 +118,30 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   };
 
   const handleSaveMarkdown = () => {
-    const markdown = generateMarkdown({ question, answers, difficulty, tags, title: '' });
-    const title = currentFile?.name || `Question_${new Date().getTime()}`;
-    
-    const savedData: Question = {
-      title,
-      markdownContent: markdown,
-      type: 'markdown',
-      question,
-      answers,
-      difficulty,
-      tags
-    };
+    try {
+      const markdown = generateMarkdown({ question, answers, difficulty, tags, title: '' });
+      const title = currentFile?.name || `Markdown_${new Date().getTime()}`;
+      
+      const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
+      const newMarkdown = {
+        title,
+        content: markdown,
+        createdAt: new Date().toISOString(),
+        type: 'markdown'
+      };
 
-    if (saveQuestionToLocalStorage(savedData, isEditing, initialData)) {
+      localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
       alert('Markdown saved successfully!');
-      onSave(savedData);
-    } else {
+      setMarkdownContent(markdown);
+    } catch (error) {
+      console.error('Error saving markdown:', error);
       alert('Failed to save markdown. Please try again.');
     }
   };
 
   const handleSave = () => {
-    const title = isEditing 
-      ? initialData?.title || 'Untitled Question'
-      : prompt('Enter a title for the question:', 'New Question') || 'Untitled Question';
+    const title = prompt('Enter a title for the question:', 'New Question');
+    if (!title) return;
 
     const savedData: Question = {
       question,
@@ -160,6 +165,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       }
 
       onSave(savedData);
+      router.push('/savedquestionslists');
     } catch (error) {
       console.error('Error saving question:', error);
       alert('Failed to save question. Please try again.');
@@ -172,24 +178,28 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
   };
 
-  const router = useRouter();
+  // const handleBackClick = () => {
+  //   router.push('/savedquestionslists');
+  // };
 
-  const handleBackClick = () => {
-    router.push('/savedquestionslists');
-  };
-
- 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto p-4">
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="mb-4">
-          <button
+          {/* <button
             onClick={handleBackClick}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
           >
             <ArrowLeft size={16} />
             Back to Dashboard
-          </button>
+          </button> */}
+          <Link 
+            href="/savedquestionslists"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+          >
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </Link>
         </div>
 
         <div className="mb-6">
@@ -277,7 +287,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     type="text"
                     value={tagsInput}
                     onChange={handleTagsChange}
-                    placeholder="Enter tag eg intermediate-angular-routing"
+                    placeholder="Enter tags (comma-separated)"
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -314,7 +324,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       />
                       <label className="ml-2 text-sm font-medium text-gray-700">
                         Answer {String.fromCharCode(65 + index)}
-                        </label>
+                      </label>
                     </div>
                     <textarea
                       value={answer.text}
@@ -346,7 +356,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               onClick={handleSaveMarkdown}
               className="px-4 py-2 text-white bg-green-500 rounded-md hover:bg-green-600"
             >
-              Save Markdown
+              Save as Markdown
             </button>
           )}
           {!showMarkdown && (
