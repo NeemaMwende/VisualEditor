@@ -8,9 +8,10 @@ import {
   saveQuestionToLocalStorage
 } from '../../../utils/markdownUtils';
 //import { useRouter } from 'next/router';
-import Link from 'next/link';
+//import Link from 'next/link';
+import { EditorQuestion } from '@/app/components/Interfaces';
 interface QuestionEditorProps {
-  onSave: (data: EditorQuestion) => void;
+  onSave: (data: Question) => void;
   onBack: () => void;
   onEditQuestion?: (data: EditorQuestion) => void;
   initialData?: EditorQuestion;
@@ -165,7 +166,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       }
 
       onSave(savedData);
-      router.push('/savedquestionslists');
+      // router.push('/savedquestionslists');
     } catch (error) {
       console.error('Error saving question:', error);
       alert('Failed to save question. Please try again.');
@@ -178,28 +179,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
   };
 
-  // const handleBackClick = () => {
-  //   router.push('/savedquestionslists');
-  // };
+  
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="mb-4">
-          {/* <button
-            onClick={handleBackClick}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-          >
-            <ArrowLeft size={16} />
-            Back to Dashboard
-          </button> */}
-          <Link 
+         
+          {/* <Link 
             href="/savedquestionslists"
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
           >
             <ArrowLeft size={16} />
             Back to Dashboard
-          </Link>
+          </Link> */}
         </div>
 
         <div className="mb-6">

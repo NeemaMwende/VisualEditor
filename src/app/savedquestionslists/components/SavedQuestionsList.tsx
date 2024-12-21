@@ -9,8 +9,10 @@ import {
   getMarkdownFromLocalStorage,
   addNewMarkdownFile,
   deleteMarkdownFile,
-  toggleMarkdownExpand
+  toggleMarkdownExpand,
+  updateMarkdownFile
 } from '../../../utils/markdownUtils';
+
 
 interface SavedQuestionsListProps {
   questions: Question[];
@@ -27,8 +29,8 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'questions' | 'markdown'>('questions');
   const [markdownFiles, setMarkdownFiles] = useState<MarkdownFile[]>([]);
+  const [editingMarkdown, setEditingMarkdown] = useState<Question | null>(null);
   
-  // Load markdown files from localStorage on component mount
   useEffect(() => {
     const storedFiles = getMarkdownFromLocalStorage();
     setMarkdownFiles(storedFiles);
@@ -58,10 +60,46 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     }
   };
 
-  const saveAsMarkdown = (question: Question) => {
+  const promptForTitle = (defaultTitle: string = ''): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const title = window.prompt('Enter a title for the markdown file:', defaultTitle);
+      resolve(title || null);
+    });
+  };
+
+  const saveAsMarkdown = async (question: Question) => {
     const content = generateMarkdown(question);
     const updatedFiles = addNewMarkdownFile(markdownFiles, content, question.title);
     setMarkdownFiles(updatedFiles);
+  };
+
+  const createNewMarkdown = async (content: string) => {
+    const title = await promptForTitle();
+    if (title) {
+      const updatedFiles = addNewMarkdownFile(markdownFiles, content, title);
+      setMarkdownFiles(updatedFiles);
+    }
+  };
+
+  const handleEditMarkdown = (file: MarkdownFile) => {
+    const markdownQuestion: Question = {
+      id: file.id,
+      title: file.title,
+      question: file.content,
+      difficulty: 'N/A',
+      tags: [],
+      answers: [],
+      isExpanded: false
+    };
+    setEditingMarkdown(markdownQuestion);
+    setViewMode('questions');
+  };
+
+  const saveMarkdownChanges = (question: Question) => {
+    const content = question.question;
+    const updatedFiles = updateMarkdownFile(markdownFiles, question.id, content);
+    setMarkdownFiles(updatedFiles);
+    setEditingMarkdown(null);
   };
 
   const downloadFile = (content: string, filename: string) => {
@@ -93,11 +131,16 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const downloadAll = () => {
     if (viewMode === 'questions') {
-      const content = questions.map(q => generateMarkdown(q)).join('\n\n---\n\n');
-      downloadFile(content, 'all-questions.md');
+      questions.forEach(question => {
+        const content = generateMarkdown(question);
+        const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+        downloadFile(content, filename);
+      });
     } else {
-      const content = markdownFiles.map(m => m.content).join('\n\n---\n\n');
-      downloadFile(content, 'all-markdown.md');
+      markdownFiles.forEach(file => {
+        const filename = `${file.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+        downloadFile(file.content, filename);
+      });
     }
   };
 
@@ -218,6 +261,15 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
               <div className="flex flex-col space-y-2">
                 <h3 className="text-lg font-semibold">{file.title}</h3>
                 <div className="flex justify-end space-x-2 mt-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditMarkdown(file);
+                    }}
+                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Edit
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

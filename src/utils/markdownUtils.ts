@@ -201,3 +201,18 @@ export const saveQuestionToLocalStorage = (savedData: Question, isEditing: boole
     return false;
   }
 };
+
+export interface MarkdownFile {
+  id: number;
+  title: string;
+  content: string;
+  isExpanded: boolean;
+}
+
+export const updateMarkdownFile = (files: MarkdownFile[], id: number, content: string): MarkdownFile[] => {
+  const updatedFiles = files.map(file =>
+    file.id === id ? { ...file, content } : file
+  );
+  saveMarkdownToLocalStorage(updatedFiles);
+  return updatedFiles;
+};
