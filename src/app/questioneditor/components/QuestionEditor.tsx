@@ -10,10 +10,10 @@ import {
 //import { useRouter } from 'next/router';
 import Link from 'next/link';
 interface QuestionEditorProps {
-  onSave: (data: Question) => void;
+  onSave: (data: EditorQuestion) => void;
   onBack: () => void;
-  onEditQuestion?: (data: Question) => void;
-  initialData?: Question;
+  onEditQuestion?: (data: EditorQuestion) => void;
+  initialData?: EditorQuestion;
   isEditing?: boolean;
 }
 
