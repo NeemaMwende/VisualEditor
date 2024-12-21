@@ -60,12 +60,12 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     }
   };
 
-  const promptForTitle = (defaultTitle: string = ''): Promise<string | null> => {
-    return new Promise((resolve) => {
-      const title = window.prompt('Enter a title for the markdown file:', defaultTitle);
-      resolve(title || null);
-    });
-  };
+  // const promptForTitle = (defaultTitle: string = ''): Promise<string | null> => {
+  //   return new Promise((resolve) => {
+  //     const title = window.prompt('Enter a title for the markdown file:', defaultTitle);
+  //     resolve(title || null);
+  //   });
+  // };
 
   const saveAsMarkdown = async (question: BaseQuestion) => {
     const content = generateMarkdown(question);
@@ -92,7 +92,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       isExpanded: false
     };
     setEditingMarkdown(markdownQuestion);
-    setViewMode('questions');
+    setViewMode('markdown');
   };
 
   // const saveMarkdownChanges = (question: BaseQuestion) => {
@@ -149,9 +149,9 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       {questions.length === 0 ? (
         <p className="text-center text-gray-500 italic">No questions created yet.</p>
       ) : (
-        questions.map(question => (
+        questions.map((question, index) => (
           <div
-            key={question.id}
+            key={question.id || `question-${index}`}
             className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
           >
             <div
@@ -249,9 +249,9 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       {markdownFiles.length === 0 ? (
         <p className="text-center text-gray-500 italic">No markdown files saved yet.</p>
       ) : (
-        markdownFiles.map(file => (
+        markdownFiles.map((file, index) => (
           <div
-            key={file.id}
+            key={file.id ||`file-${index}`}
             className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
           >
             <div

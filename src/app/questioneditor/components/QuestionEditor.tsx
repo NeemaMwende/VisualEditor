@@ -4,7 +4,7 @@ import {
   generateMarkdown,
   parseMarkdownContent,
 } from '../../../utils/markdownUtils';
-import { EditorQuestion } from '@/app/components/Interfaces';
+import { EditorQuestion, MarkdownData } from '@/app/components/Interfaces';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
@@ -12,6 +12,7 @@ interface QuestionEditorProps {
   onEditQuestion?: (data: EditorQuestion) => void;
   initialData?: EditorQuestion;
   isEditing?: boolean;
+  setIsEditing?: (value: boolean) => void;
 }
 
 interface Answer {
@@ -38,9 +39,10 @@ interface FileData {
 
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onSave,
-  onBack,
-  initialData,
-  isEditing = false
+  //onBack,
+  //initialData,
+  //isEditing = false,
+  //setIsEditing,
 }) => {
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
@@ -58,6 +60,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [initialData, setInitialData] = useState<MarkdownData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  // const [currentMarkdown, setCurrentMarkdown] = useState('');
 
   const currentMarkdown = useMemo(() => {
     return generateMarkdown({ 
@@ -70,7 +75,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   }, [question, answers, difficulty, tags, initialData?.title, currentFile?.name]);
 
   useEffect(() => {
-    if (initialData) {
+    if (isEditing && initialData) {
       setQuestion(initialData.question || '');
       setAnswers(initialData.answers.map(answer => ({
         ...answer,
@@ -80,9 +85,10 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       if (initialData.tags) {
         setTags(initialData.tags);
         setTagsInput(initialData.tags.join(', '));
+        setMarkdownContent(initialData.markdownContent || '');
       }
     }
-  }, [initialData]);
+  }, [initialData, isEditing]);
 
   useEffect(() => {
     setMarkdownContent(currentMarkdown);
@@ -125,22 +131,75 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   const handleSaveMarkdown = () => {
     try {
-      const title = currentFile?.name || initialData?.title || `Markdown_${new Date().getTime()}`;
-      const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
-      const newMarkdown = {
+      if (!currentMarkdown?.trim()) {
+        alert('Cannot save empty markdown content');
+        return;
+      }
+
+
+      let title = currentFile?.name || initialData?.title;
+      if (!title) {
+        title = prompt('Enter a title for the markdown:', '');
+        if (!title?.trim()) return;
+      }
+
+      const newMarkdown: MarkdownData = {
         title,
         content: currentMarkdown,
         createdAt: new Date().toISOString(),
-        type: 'markdown'
+        type: 'markdown',
+        isVisible: true
       };
 
-      localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
+      const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
+
+      const existingIndex = existingMarkdowns.findIndex(
+        (m: MarkdownData) => m.title === title
+      );
+
+      let updatedMarkdowns;
+      if (existingIndex !== -1) {
+       
+        updatedMarkdowns = existingMarkdowns.map((m: MarkdownData, index: number) =>
+          index === existingIndex ? newMarkdown : m
+        );
+      } else {
+        
+        updatedMarkdowns = [...existingMarkdowns, newMarkdown];
+      }
+
+    
+      localStorage.setItem('markdowns', JSON.stringify(updatedMarkdowns));
+
+     
+      setInitialData(newMarkdown);
+      if (setIsEditing) {
+        setIsEditing(false);
+      }
+      // setIsEditing(false);
+
       alert('Markdown saved successfully!');
     } catch (error) {
       console.error('Error saving markdown:', error);
       alert('Failed to save markdown. Please try again.');
     }
   };
+
+  const loadSavedMarkdowns = () => {
+    try {
+      const savedMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
+      return savedMarkdowns;
+    } catch (error) {
+      console.error('Error loading markdowns:', error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    loadSavedMarkdowns();
+  }, []);
+
+
 
   const handleSave = () => {
     let savedData: Question;
@@ -169,15 +228,15 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         alert('Failed to update question. Please try again.');
       }
     } else {
-      const title = prompt('Enter a title for the question:', '');
-      if (!title) return;
+      // const title = prompt('Enter a title for the question:', '');
+      // if (!title) return;
 
       savedData = {
         question,
         answers,
         difficulty,
         tags,
-        title,
+        //title,
         type: 'question',
         markdownContent: currentMarkdown
       };
@@ -193,6 +252,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
+  
   const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     setTagsInput(input);

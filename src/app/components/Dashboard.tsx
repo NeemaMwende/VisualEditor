@@ -59,10 +59,6 @@ const Dashboard = () => {
 
   const handleSaveQuestion = async (questionData: QuestionData) => {
     if (questionData.question.trim()) {
-      const difficulty = parseInt(prompt('Enter difficulty level (1, 2, or 3):', '1') || '1');
-      const tagsInput = prompt('Enter tags (comma-separated):', '') || '';
-      const tags = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag);
-
       if (currentlyEditing !== null) {
         const updatedQuestions = questions.map(q =>
           q.id === currentlyEditing
@@ -70,8 +66,7 @@ const Dashboard = () => {
                 ...q,
                 question: questionData.question,
                 answers: questionData.answers,
-                difficulty,
-                tags
+                tags: questionData.tags || q.tags,
               }
             : q
         );
@@ -84,18 +79,20 @@ const Dashboard = () => {
           title,
           question: questionData.question,
           answers: questionData.answers,
-          difficulty,
-          tags,
-          isExpanded: false
+          difficulty: 1,
+          tags: questionData.tags || [],
+          isExpanded: false,
         };
         setQuestions([...questions, newQuestion]);
         setNextId(nextId + 1);
       }
-
+  
       setShowEditor(false);
       setInitialData(undefined);
     }
   };
+  
+  
 
   const handleEdit = (question: DashboardQuestion) => {
     setCurrentlyEditing(question.id);
