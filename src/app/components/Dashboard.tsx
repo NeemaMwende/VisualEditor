@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import QuestionEditor from './QuestionEditor';
-import SavedQuestionsList from './SavedQuestionsList';
+import QuestionEditor from '../questioneditor/components/QuestionEditor';
+import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
 import { Question, QuestionData } from './Interfaces';
 
 

@@ -1,7 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft } from 'lucide-react';
-// import { useRouter } from 'next/router';
+import {
+  FileData,
+  generateMarkdown,
+  parseMarkdownContent,
+  saveQuestionToLocalStorage
+} from '../../../utils/markdownUtils';
+import { useRouter } from 'next/navigation';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
@@ -15,12 +20,6 @@ interface Answer {
   id: number;
   text: string;
   isCorrect: boolean;
-}
-
-interface FileData {
-  name: string;
-  content: string;
-  path: string;
 }
 
 interface Question {
@@ -40,7 +39,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   initialData,
   isEditing = false
 }) => {
-
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
     { id: 1, text: '', isCorrect: false },
@@ -58,35 +56,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const codePatterns = [
-    /\b(const|let|var|function)\b.*[=;]/,
-    /{[\s\S]*}/,
-    /\b(useHash|pushState|useHTML5):/,
-    /<[^>]+>/,
-    /\b(new \w+)\b/,
-    /\b\w+\((.*)\)/,
-    /import .* from/,
-    /export .*/,
-    /async|await/,
-    /\.[a-zA-Z]+\((.*)\)/
-  ];
-
-  const detectAndWrapCode = (text: string): string => {
-    const isCode = codePatterns.some(pattern => pattern.test(text));
-    
-    if (isCode) {
-      let language = 'javascript';
-      if (text.includes('useHash') || text.includes('pushState')) {
-        language = 'typescript';
-      } else if (text.includes('<') && text.includes('>')) {
-        language = 'html';
-      }
-      return `\`\`\`${language}\n${text}\n\`\`\``;
-    }
-    
-    return text;
-  };
-
   useEffect(() => {
     if (initialData) {
       setQuestion(initialData.question || '');
@@ -102,143 +71,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   }, [initialData]);
 
-  const parseMarkdownContent = (content: string) => {
-    const lines = content.split('\n');
-    const parsedData = {
-      question: '',
-      answers: [] as Answer[],
-      difficulty: 1,
-      tags: [] as string[],
-      markdownContent: content
-    };
-
-    let inFrontMatter = false;
-    let currentSection = '';
-    let currentAnswer = '';
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      if (line === '---') {
-        inFrontMatter = !inFrontMatter;
-        continue;
-      }
-
-      if (inFrontMatter) {
-        if (line.startsWith('difficulty:')) {
-          parsedData.difficulty = parseInt(line.split(':')[1].trim());
-        } else if (line.startsWith('tags:')) {
-          parsedData.tags = line.split(':')[1].trim().split(' ');
-        }
-      } else {
-        if (line.startsWith('#')) {
-          if (currentAnswer) {
-            parsedData.answers.push({
-              id: parsedData.answers.length + 1,
-              text: currentAnswer.trim(),
-              isCorrect: line.toLowerCase().includes('correct')
-            });
-            currentAnswer = '';
-          }
-          currentSection = 'answer';
-        } else if (line && !parsedData.question && currentSection !== 'answer') {
-          parsedData.question = line;
-        } else if (line && currentSection === 'answer') {
-          currentAnswer += line + '\n';
-        }
-      }
-    }
-
-    if (currentAnswer) {
-      parsedData.answers.push({
-        id: parsedData.answers.length + 1,
-        text: currentAnswer.trim(),
-        isCorrect: false
-      });
-    }
-
-    while (parsedData.answers.length < 4) {
-      parsedData.answers.push({
-        id: parsedData.answers.length + 1,
-        text: '',
-        isCorrect: false
-      });
-    }
-
-    return parsedData;
-  };
-
-  const generateMarkdown = () => {
-    let md = '---\n';
-    md += `difficulty: ${difficulty}\n`;
-    md += `tags: ${tags.join(' ')}\n`;
-    md += '---\n\n';
-
-    const processedQuestion = detectAndWrapCode(question);
-    md += `${processedQuestion}\n\n`;
-
-    answers.forEach((answer) => {
-      const processedAnswer = detectAndWrapCode(answer.text);
-      md += `# ${answer.isCorrect ? 'Correct' : ''}\n`;
-      md += `${processedAnswer}\n\n`;
-    });
-
-    return md.trim();
-  };
-
-  const saveToLocalStorage = (savedData: Question) => {
-    try {
-      const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
-      const timestamp = new Date().getTime();
-      const fileName = `question_${timestamp}.md`;
-      
-      const questionWithMetadata = {
-        ...savedData,
-        fileName,
-        createdAt: timestamp,
-        type: 'markdown'
-      };
-
-      if (isEditing && initialData?.title) {
-        const updatedQuestions = existingQuestions.map((q: Question) => 
-          q.title === initialData.title ? questionWithMetadata : q
-        );
-        localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-      } else {
-        localStorage.setItem('questions', JSON.stringify([...existingQuestions, questionWithMetadata]));
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-      return false;
-    }
-  };
-
-  const handleSaveMarkdown = () => {
-    const markdown = generateMarkdown();
-    const title = currentFile?.name || `Question_${new Date().getTime()}`;
-    
-    const savedData: Question = {
-      title,
-      markdownContent: markdown,
-      type: 'markdown',
-      question,
-      answers,
-      difficulty,
-      tags
-    };
-
-    if (saveToLocalStorage(savedData)) {
-      alert('Markdown saved successfully!');
-      onSave(savedData);
-    } else {
-      alert('Failed to save markdown. Please try again.');
-    }
-  };
-
   useEffect(() => {
-    const markdown = generateMarkdown();
+    const markdown = generateMarkdown({ question, answers, difficulty, tags, title: '' });
     setMarkdownContent(markdown);
   }, [question, answers, difficulty, tags]);
 
@@ -277,6 +111,28 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setShowMarkdown(true);
   };
 
+  const handleSaveMarkdown = () => {
+    const markdown = generateMarkdown({ question, answers, difficulty, tags, title: '' });
+    const title = currentFile?.name || `Question_${new Date().getTime()}`;
+    
+    const savedData: Question = {
+      title,
+      markdownContent: markdown,
+      type: 'markdown',
+      question,
+      answers,
+      difficulty,
+      tags
+    };
+
+    if (saveQuestionToLocalStorage(savedData, isEditing, initialData)) {
+      alert('Markdown saved successfully!');
+      onSave(savedData);
+    } else {
+      alert('Failed to save markdown. Please try again.');
+    }
+  };
+
   const handleSave = () => {
     const title = isEditing 
       ? initialData?.title || 'Untitled Question'
@@ -289,7 +145,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       tags,
       title,
       type: 'question',
-      markdownContent: generateMarkdown()
+      markdownContent: generateMarkdown({ question, answers, difficulty, tags, title })
     };
 
     try {
@@ -316,9 +172,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
   };
 
+  const router = useRouter();
+
   const handleBackClick = () => {
-    console.log("this is a placeholder")
-  }
+    router.push('/savedquestionslists');
+  };
+
+ 
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="bg-white p-6 rounded-lg shadow-md">

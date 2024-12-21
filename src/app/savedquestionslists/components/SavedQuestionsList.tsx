@@ -1,6 +1,7 @@
+"use client"
 import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Question } from './Interfaces';
+import { Question } from '../../components/Interfaces';
 import {
   MarkdownFile,
   generateMarkdown,
@@ -9,7 +10,7 @@ import {
   addNewMarkdownFile,
   deleteMarkdownFile,
   toggleMarkdownExpand
-} from './../../utils/markdownUtils';
+} from '../../../utils/markdownUtils';
 
 interface SavedQuestionsListProps {
   questions: Question[];
