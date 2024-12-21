@@ -1,23 +1,23 @@
 "use client"
 import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Question } from '../../components/Interfaces';
+import { BaseQuestion } from '../../components/Interfaces';
 import {
   MarkdownFile,
   generateMarkdown,
-  saveMarkdownToLocalStorage,
+  //saveMarkdownToLocalStorage,
   getMarkdownFromLocalStorage,
   addNewMarkdownFile,
   deleteMarkdownFile,
   toggleMarkdownExpand,
-  updateMarkdownFile
+  //updateMarkdownFile
 } from '../../../utils/markdownUtils';
 
 
 interface SavedQuestionsListProps {
-  questions: Question[];
-  onEdit: (question: Question) => void;
-  setQuestions: Dispatch<SetStateAction<Question[]>>;
+  questions: BaseQuestion[];
+  onEdit: (question: BaseQuestion) => void;
+  setQuestions: Dispatch<SetStateAction<BaseQuestion[]>>;
   onExit?: () => void;
 }
 
@@ -29,7 +29,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'questions' | 'markdown'>('questions');
   const [markdownFiles, setMarkdownFiles] = useState<MarkdownFile[]>([]);
-  const [editingMarkdown, setEditingMarkdown] = useState<Question | null>(null);
+  const [editingMarkdown, setEditingMarkdown] = useState<BaseQuestion | null>(null);
   
   useEffect(() => {
     const storedFiles = getMarkdownFromLocalStorage();
@@ -67,22 +67,22 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     });
   };
 
-  const saveAsMarkdown = async (question: Question) => {
+  const saveAsMarkdown = async (question: BaseQuestion) => {
     const content = generateMarkdown(question);
     const updatedFiles = addNewMarkdownFile(markdownFiles, content, question.title);
     setMarkdownFiles(updatedFiles);
   };
 
-  const createNewMarkdown = async (content: string) => {
-    const title = await promptForTitle();
-    if (title) {
-      const updatedFiles = addNewMarkdownFile(markdownFiles, content, title);
-      setMarkdownFiles(updatedFiles);
-    }
-  };
+  // const createNewMarkdown = async (content: string) => {
+  //   const title = await promptForTitle();
+  //   if (title) {
+  //     const updatedFiles = addNewMarkdownFile(markdownFiles, content, title);
+  //     setMarkdownFiles(updatedFiles);
+  //   }
+  // };
 
   const handleEditMarkdown = (file: MarkdownFile) => {
-    const markdownQuestion: Question = {
+    const markdownQuestion: BaseQuestion = {
       id: file.id,
       title: file.title,
       question: file.content,
@@ -95,12 +95,12 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setViewMode('questions');
   };
 
-  const saveMarkdownChanges = (question: Question) => {
-    const content = question.question;
-    const updatedFiles = updateMarkdownFile(markdownFiles, question.id, content);
-    setMarkdownFiles(updatedFiles);
-    setEditingMarkdown(null);
-  };
+  // const saveMarkdownChanges = (question: BaseQuestion) => {
+  //   const content = question.question;
+  //   const updatedFiles = updateMarkdownFile(markdownFiles, question.id, content);
+  //   setMarkdownFiles(updatedFiles);
+  //   setEditingMarkdown(null);
+  // };
 
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/markdown' });

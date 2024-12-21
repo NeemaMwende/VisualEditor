@@ -1,5 +1,5 @@
 
-import { Question } from '../app/components/Interfaces';
+import { BaseQuestion } from '../app/components/Interfaces';
 
 export interface MarkdownFile {
   id: number;
@@ -43,7 +43,7 @@ export const detectAndWrapCode = (text: string): string => {
   return text;
 };
 
-export const generateMarkdown = (question: Question): string => {
+export const generateMarkdown = (question: BaseQuestion): string => {
   const tagString = question.tags.join(' ');
   let md = '---\n';
   md += `difficulty: ${question.difficulty}\n`;
@@ -173,7 +173,7 @@ export const toggleMarkdownExpand = (
   return updatedFiles;
 };
 
-export const saveQuestionToLocalStorage = (savedData: Question, isEditing: boolean, initialData?: Question) => {
+export const saveQuestionToLocalStorage = (savedData: BaseQuestion, isEditing: boolean, initialData?: BaseQuestion) => {
   try {
     const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
     const timestamp = new Date().getTime();
@@ -187,7 +187,7 @@ export const saveQuestionToLocalStorage = (savedData: Question, isEditing: boole
     };
 
     if (isEditing && initialData?.title) {
-      const updatedQuestions = existingQuestions.map((q: Question) => 
+      const updatedQuestions = existingQuestions.map((q: BaseQuestion) => 
         q.title === initialData.title ? questionWithMetadata : q
       );
       localStorage.setItem('questions', JSON.stringify(updatedQuestions));

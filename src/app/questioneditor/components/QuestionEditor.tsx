@@ -1,15 +1,11 @@
-// QuestionEditor.tsx
-import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { FileText, Folder, ChevronRight, ChevronDown } from 'lucide-react';
 import {
-  FileData,
   generateMarkdown,
   parseMarkdownContent,
-  saveQuestionToLocalStorage
 } from '../../../utils/markdownUtils';
-//import { useRouter } from 'next/router';
-//import Link from 'next/link';
 import { EditorQuestion } from '@/app/components/Interfaces';
+
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
@@ -42,6 +38,7 @@ interface FileData {
 
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onSave,
+  onBack,
   initialData,
   isEditing = false
 }) => {
@@ -61,7 +58,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  //const router = useRouter();
+
+  const currentMarkdown = useMemo(() => {
+    return generateMarkdown({ 
+      question, 
+      answers, 
+      difficulty, 
+      tags, 
+      title: initialData?.title || currentFile?.name || '' 
+    });
+  }, [question, answers, difficulty, tags, initialData?.title, currentFile?.name]);
 
   useEffect(() => {
     if (initialData) {
@@ -79,9 +85,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   }, [initialData]);
 
   useEffect(() => {
-    const markdown = generateMarkdown({ question, answers, difficulty, tags, title: '' });
-    setMarkdownContent(markdown);
-  }, [question, answers, difficulty, tags]);
+    setMarkdownContent(currentMarkdown);
+  }, [currentMarkdown]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -120,20 +125,17 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   const handleSaveMarkdown = () => {
     try {
-      const markdown = generateMarkdown({ question, answers, difficulty, tags, title: '' });
-      const title = currentFile?.name || `Markdown_${new Date().getTime()}`;
-      
+      const title = currentFile?.name || initialData?.title || `Markdown_${new Date().getTime()}`;
       const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
       const newMarkdown = {
         title,
-        content: markdown,
+        content: currentMarkdown,
         createdAt: new Date().toISOString(),
         type: 'markdown'
       };
 
       localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
       alert('Markdown saved successfully!');
-      setMarkdownContent(markdown);
     } catch (error) {
       console.error('Error saving markdown:', error);
       alert('Failed to save markdown. Please try again.');
@@ -141,35 +143,53 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   };
 
   const handleSave = () => {
-    const title = prompt('Enter a title for the question:', 'New Question');
-    if (!title) return;
+    let savedData: Question;
+    
+    if (isEditing && initialData?.title) {
+      savedData = {
+        question,
+        answers,
+        difficulty,
+        tags,
+        title: initialData.title,
+        type: 'question',
+        markdownContent: currentMarkdown
+      };
 
-    const savedData: Question = {
-      question,
-      answers,
-      difficulty,
-      tags,
-      title,
-      type: 'question',
-      markdownContent: generateMarkdown({ question, answers, difficulty, tags, title })
-    };
-
-    try {
-      const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
-      if (isEditing && initialData?.title) {
+      try {
+        const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
         const updatedQuestions = existingQuestions.map((q: Question) => 
           q.title === initialData.title ? savedData : q
         );
         localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-      } else {
-        localStorage.setItem('questions', JSON.stringify([...existingQuestions, savedData]));
+        alert('File edited successfully!');
+        onSave(savedData);
+      } catch (error) {
+        console.error('Error updating question:', error);
+        alert('Failed to update question. Please try again.');
       }
+    } else {
+      const title = prompt('Enter a title for the question:', '');
+      if (!title) return;
 
-      onSave(savedData);
-      // router.push('/savedquestionslists');
-    } catch (error) {
-      console.error('Error saving question:', error);
-      alert('Failed to save question. Please try again.');
+      savedData = {
+        question,
+        answers,
+        difficulty,
+        tags,
+        title,
+        type: 'question',
+        markdownContent: currentMarkdown
+      };
+
+      try {
+        const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
+        localStorage.setItem('questions', JSON.stringify([...existingQuestions, savedData]));
+        onSave(savedData);
+      } catch (error) {
+        console.error('Error saving question:', error);
+        alert('Failed to save question. Please try again.');
+      }
     }
   };
 
@@ -179,22 +199,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
   };
 
-  
-
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="mb-4">
-         
-          {/* <Link 
-            href="/savedquestionslists"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-          >
-            <ArrowLeft size={16} />
-            Back to Dashboard
-          </Link> */}
-        </div>
-
         <div className="mb-6">
           <div className="flex gap-4 mb-4">
             <input
@@ -255,36 +262,35 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               <label className="block text-gray-700 text-sm font-bold mb-2">
                 Markdown Content
               </label>
-              <pre className="w-full p-4 bg-gray-50 rounded-md font-mono text-sm whitespace-pre-wrap">
+              <pre className="w-full p-4 bg-gray-50 rounded-md font-mono text-sm whitespace-pre-wrap break-words">
                 {markdownContent}
               </pre>
             </div>
           ) : (
             <>
-              <div className="flex flex-col gap-4 m-4">
+               <div className="flex flex-col gap-4 m-4">
                 <div className="w-full">
                   <select
                     value={difficulty}
                     onChange={e => setDifficulty(parseInt(e.target.value))}
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="" disabled>Select difficulty level</option>
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
+                    <option value={1}>Difficulty Level 1</option>
+                    <option value={2}>Difficulty Level 2</option>
+                    <option value={3}>Difficulty Level 3</option>
                   </select>
-                </div>
+                </div> 
 
-                <div className="w-full">
+                 <div className="w-full">
                   <input
                     type="text"
+                    placeholder="Enter tags here eg advanced-react"
                     value={tagsInput}
                     onChange={handleTagsChange}
-                    placeholder="Enter tags (comma-separated)"
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </div>
-              </div>
+                </div> 
+               </div>
 
               <div className="mb-6">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -295,7 +301,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   onChange={(e) => setQuestion(e.target.value)}
                   className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
-                  placeholder="Type your question here..."
                 />
               </div>
 
@@ -328,7 +333,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       }}
                       className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={2}
-                      placeholder={`Type answer ${String.fromCharCode(65 + index)} here...`}
                     />
                   </div>
                 ))}
@@ -352,14 +356,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               Save as Markdown
             </button>
           )}
-          {!showMarkdown && (
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
-            >
-              {isEditing ? 'Save Changes' : 'Save Question'}
-            </button>
-          )}
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
+          >
+            {isEditing ? 'Save Changes' : 'Save Question'}
+          </button>
         </div>
       </div>
     </div>
