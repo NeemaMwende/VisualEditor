@@ -156,7 +156,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
           >
             <div
               className="cursor-pointer"
-              onClick={() => toggleExpand(question.id)}
+              onClick={() => toggleExpand(question.id)}  // Toggle expand when clicked
             >
               <div className="flex flex-col space-y-2">
                 <h3 className="text-lg font-semibold">{question.title}</h3>
@@ -213,7 +213,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                 </div>
               </div>
             </div>
-
+  
             {question.isExpanded && (
               <div className="mt-4 space-y-2 border-t pt-4">
                 <div className="space-y-4">
@@ -243,6 +243,15 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       )}
     </div>
   );
+  
+  const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
+    const updatedQuestions = questions.map((q) =>
+      q.id === updatedQuestion.id ? { ...q, question: updatedQuestion.question } : q
+    );
+    setQuestions(updatedQuestions);  
+    setEditingMarkdown(null); 
+  };
+  
 
   const renderMarkdownFiles = () => (
     <div className="space-y-4">
@@ -302,6 +311,48 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
           </div>
         ))
       )}
+        {editingMarkdown && viewMode === 'markdown' && (
+        <div className="max-w-2xl mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
+          <h3 className="text-2xl font-bold text-gray-700 mb-6">Edit Question: {editingMarkdown.title}</h3>
+          
+          <div className="space-y-6">
+            <label htmlFor="questionContent" className="block text-lg font-semibold text-gray-600">
+              Question Content
+            </label>
+            
+            <textarea
+              id="questionContent"
+              value={editingMarkdown.question}
+              onChange={(e) => {
+                setEditingMarkdown({
+                  ...editingMarkdown,
+                  question: e.target.value,
+                });
+              }}
+              className="w-full h-48 p-4 text-base border border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Edit the content of the question here..."
+            />
+            
+            <div className="flex justify-between space-x-4">
+              <button
+                onClick={() => saveMarkdownChanges(editingMarkdown)}
+                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Save Changes
+              </button>
+              
+              <button
+                onClick={() => setViewMode('list')}
+                className="px-6 py-2 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 
