@@ -303,9 +303,9 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
             {file.isExpanded && (
               <div className="mt-4 space-y-2 border-t pt-4">
-                <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded">
-                  {file.content}
-                </pre>
+               <pre className="whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-4 rounded max-w-full overflow-x-auto">
+                {file.content}
+              </pre>
               </div>
             )}
           </div>

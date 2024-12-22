@@ -67,6 +67,8 @@ const Dashboard = () => {
                 question: questionData.question,
                 answers: questionData.answers,
                 tags: questionData.tags || q.tags,
+                difficulty: questionData.difficulty || q.difficulty,
+                title: questionData.title || q.title,
               }
             : q
         );
@@ -92,8 +94,6 @@ const Dashboard = () => {
     }
   };
   
-  
-
   const handleEdit = (question: DashboardQuestion) => {
     setCurrentlyEditing(question.id);
     setInitialData({
