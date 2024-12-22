@@ -10,7 +10,7 @@ import {
   addNewMarkdownFile,
   deleteMarkdownFile,
   toggleMarkdownExpand,
-  //updateMarkdownFile
+  updateMarkdownFile
 } from '../../../utils/markdownUtils';
 
 
@@ -34,7 +34,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   useEffect(() => {
     const storedFiles = getMarkdownFromLocalStorage();
     setMarkdownFiles(storedFiles);
-  }, []);
+  }, [viewMode]);
 
   const handleDelete = (id: number) => {
     if (viewMode === 'questions') {
@@ -71,6 +71,10 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     const content = generateMarkdown(question);
     const updatedFiles = addNewMarkdownFile(markdownFiles, content, question.title);
     setMarkdownFiles(updatedFiles);
+    alert('Markdown file saved successfully!');
+    
+    const storedFiles = getMarkdownFromLocalStorage();
+    setMarkdownFiles(storedFiles);
   };
 
   // const createNewMarkdown = async (content: string) => {
@@ -218,8 +222,8 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
               <div className="mt-4 space-y-2 border-t pt-4">
                 <div className="space-y-4">
                   <div>
-                    <p className="font-medium">Question:</p>
-                    <p className="ml-4 mt-1">{question.question}</p>
+                    <p className="font-medium ">Question:</p>
+                    <p className="ml-4 mt-1 whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-4 rounded max-w-full overflow-x-auto">{question.question}</p>
                   </div>
                   <div>
                     <p className="font-medium">Answers:</p>
@@ -244,14 +248,25 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     </div>
   );
   
+  // const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
+    
+  //   const updatedQuestions = questions.map((q) =>
+  //     q.id === updatedQuestion.id ? { ...q, question: updatedQuestion.question } : q
+  //   );
+  //   setQuestions(updatedQuestions);  
+  //   setEditingMarkdown(null); 
+  // };
   const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
-    const updatedQuestions = questions.map((q) =>
-      q.id === updatedQuestion.id ? { ...q, question: updatedQuestion.question } : q
-    );
-    setQuestions(updatedQuestions);  
-    setEditingMarkdown(null); 
+    if (editingMarkdown) {
+      const content = updatedQuestion.question;
+      const updatedFiles = updateMarkdownFile(markdownFiles, editingMarkdown.id, content);
+      setMarkdownFiles(updatedFiles);
+      setEditingMarkdown(null);
+      alert('Changes saved successfully');
+      const storedFiles = getMarkdownFromLocalStorage();
+      setMarkdownFiles(storedFiles);
+    }
   };
-  
 
   const renderMarkdownFiles = () => (
     <div className="space-y-4">
