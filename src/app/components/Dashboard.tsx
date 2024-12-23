@@ -25,11 +25,15 @@ export interface QuestionData {
   title?: string;
   difficulty?: number;
   tags?: string[];
+  // id: number;
+  // content: string;
+  // createdAt: string;
 }
 
 export interface DashboardQuestion extends BaseQuestion {
   onEdit?: () => void;
   initialData?: Answer[];
+  onEditMarkdown: (markdown: MarkdownData) => void;
 }
 
 const Dashboard = () => {
@@ -109,15 +113,16 @@ const Dashboard = () => {
         setQuestions(updatedQuestions);
         setCurrentlyEditing(null);
       } else {
-        const title = await promptForTitle();
+        
         const newQuestion: DashboardQuestion = {
           id: nextId,
-          title: questionData.title || 'Untitled Question',
+          title: await promptForTitle(),
           question: questionData.question,
           answers: questionData.answers,
           difficulty: 1,
           tags: questionData.tags || [],
           isExpanded: false,
+          onEditMarkdown: () => {},
         };
         setQuestions([...questions, newQuestion]);
         setNextId(nextId + 1);
@@ -172,7 +177,7 @@ const Dashboard = () => {
           questions={questions}
           onEdit={handleEdit}
           onEditMarkdown={handleEditMarkdown}
-          setQuestions={setQuestions}
+           setQuestions={setQuestions}
           markdowns={markdowns}   
           setMarkdowns={setMarkdowns}
         />

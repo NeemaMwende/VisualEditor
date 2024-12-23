@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+"use client"
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, Folder, ChevronRight, ChevronDown } from 'lucide-react';
 import {
   generateMarkdown,
@@ -13,6 +14,7 @@ interface QuestionEditorProps {
   initialData?: EditorQuestion;
   isEditing?: boolean;
   setIsEditing?: (value: boolean) => void;
+  onSaveMarkdown?: (data: MarkdownData) => void;
 }
 
 interface Answer {
@@ -37,11 +39,17 @@ interface FileData {
   path: string;
 }
 
+interface FileInputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  webkitdirectory?: string;
+  directory?: string;
+}
+
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onSave,
   //onBack,
-  //initialData,
-  //isEditing = false,
+  initialData,
+  isEditing = false,
   //setIsEditing,
   onSaveMarkdown 
 }) => {
@@ -61,8 +69,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [initialData, setInitialData] = useState<MarkdownData | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+
   // const [currentMarkdown, setCurrentMarkdown] = useState('');
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
   const [nextMarkdownId, setNextMarkdownId] = useState(1);
@@ -155,7 +162,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         return;
       }
 
-      let title = await promptForMarkdownTitle();
+      const title = await promptForMarkdownTitle();
       if (!title) return;
 
       const newMarkdown: MarkdownData = {
@@ -288,9 +295,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               ref={fileInputRef}
               onChange={handleFileSelect}
               className="hidden"
-              webkitdirectory=""
-              directory=""
               multiple
+              {...({ webkitdirectory: "", directory: "" } as FileInputProps)}
             />
             <button
               onClick={() => fileInputRef.current?.click()}

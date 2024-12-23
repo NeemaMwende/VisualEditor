@@ -18,6 +18,8 @@ export interface BaseQuestion {
 // Question for Editor Component (Full Details)
 export interface EditorQuestion extends BaseQuestion {
   initialData?: Answer[]; 
+  markdownContent?: string;
+  isEditing: boolean;
 }
 
 // Question for List Component (Simplified)
@@ -41,13 +43,13 @@ export interface Markdown {
   content: string;
 }
 
-// export interface MarkdownData {
-//   id: number;
-//   title: string;
-//   content: string;
-//   createdAt: string;
-//   isExpanded?: boolean;
-// }
+export interface MarkdownData {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  isExpanded?: boolean;
+}
 
 // Props for SavedQuestionsList Component
 export interface SavedQuestionsListProps {
