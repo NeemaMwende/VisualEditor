@@ -60,13 +60,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     }
   };
 
-  // const promptForTitle = (defaultTitle: string = ''): Promise<string | null> => {
-  //   return new Promise((resolve) => {
-  //     const title = window.prompt('Enter a title for the markdown file:', defaultTitle);
-  //     resolve(title || null);
-  //   });
-  // };
-
   const saveAsMarkdown = async (question: BaseQuestion) => {
     const content = generateMarkdown(question);
     const updatedFiles = addNewMarkdownFile(markdownFiles, content, question.title);
@@ -77,13 +70,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setMarkdownFiles(storedFiles);
   };
 
-  // const createNewMarkdown = async (content: string) => {
-  //   const title = await promptForTitle();
-  //   if (title) {
-  //     const updatedFiles = addNewMarkdownFile(markdownFiles, content, title);
-  //     setMarkdownFiles(updatedFiles);
-  //   }
-  // };
 
   const handleEditMarkdown = (file: MarkdownFile) => {
     const markdownQuestion: BaseQuestion = {
@@ -98,13 +84,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setEditingMarkdown(markdownQuestion);
     setViewMode('markdown');
   };
-
-  // const saveMarkdownChanges = (question: BaseQuestion) => {
-  //   const content = question.question;
-  //   const updatedFiles = updateMarkdownFile(markdownFiles, question.id, content);
-  //   setMarkdownFiles(updatedFiles);
-  //   setEditingMarkdown(null);
-  // };
 
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/markdown' });
@@ -248,14 +227,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     </div>
   );
   
-  // const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
-    
-  //   const updatedQuestions = questions.map((q) =>
-  //     q.id === updatedQuestion.id ? { ...q, question: updatedQuestion.question } : q
-  //   );
-  //   setQuestions(updatedQuestions);  
-  //   setEditingMarkdown(null); 
-  // };
   const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
     if (editingMarkdown) {
       const content = updatedQuestion.question;

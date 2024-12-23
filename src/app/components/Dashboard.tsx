@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import QuestionEditor from '../questioneditor/components/QuestionEditor';
 import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
-
+import { MarkdownData } from '@/app/components/Interfaces';
 export interface Answer {
   id: number;
   text: string;
@@ -38,6 +38,8 @@ const Dashboard = () => {
   const [nextId, setNextId] = useState(1);
   const [showEditor, setShowEditor] = useState(false);
   const [initialData, setInitialData] = useState<QuestionData | undefined>(undefined);
+  const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
+  const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<number | null>(null);
 
   useEffect(() => {
     const savedQuestions = localStorage.getItem('questions');
@@ -51,6 +53,38 @@ const Dashboard = () => {
   useEffect(() => {
     localStorage.setItem('questions', JSON.stringify(questions));
   }, [questions]);
+
+  useEffect(() => {
+    const savedMarkdowns = localStorage.getItem('markdowns');
+    if (savedMarkdowns) {
+      setMarkdowns(JSON.parse(savedMarkdowns));
+    }
+  }, []);
+
+  const handleSaveMarkdown = (markdownData: MarkdownData) => {
+    const updatedMarkdowns = [...markdowns];
+    const existingIndex = markdowns.findIndex(m => m.title === markdownData.title);
+    
+    if (existingIndex !== -1) {
+      updatedMarkdowns[existingIndex] = markdownData;
+    } else {
+      updatedMarkdowns.push(markdownData);
+    }
+    
+    setMarkdowns(updatedMarkdowns);
+    localStorage.setItem('markdowns', JSON.stringify(updatedMarkdowns));
+  };
+
+  const handleEditMarkdown = (markdown: MarkdownData) => {
+    setCurrentlyEditingMarkdown(markdown.id);
+    setInitialData({
+      id: markdown.id,
+      title: markdown.title,
+      content: markdown.content,
+      createdAt: markdown.createdAt
+    });
+    setShowEditor(true);
+  };
 
   const promptForTitle = async () => {
     const title = window.prompt('Enter a title for the question:', 'New Question');
@@ -78,7 +112,7 @@ const Dashboard = () => {
         const title = await promptForTitle();
         const newQuestion: DashboardQuestion = {
           id: nextId,
-          title,
+          title: questionData.title || 'Untitled Question',
           question: questionData.question,
           answers: questionData.answers,
           difficulty: 1,
@@ -129,17 +163,18 @@ const Dashboard = () => {
       {showEditor ? (
         <QuestionEditor
           onSave={handleSaveQuestion}
+          onSaveMarkdown={handleSaveMarkdown}
           initialData={initialData}
-          isEditing={currentlyEditing !== null}
+          isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
         />
       ) : (
         <SavedQuestionsList
           questions={questions}
           onEdit={handleEdit}
+          onEditMarkdown={handleEditMarkdown}
           setQuestions={setQuestions}
-          markdowns={[]}  
-          onEditMarkdown={() => {}} 
-          setMarkdowns={() => {}}  
+          markdowns={markdowns}   
+          setMarkdowns={setMarkdowns}
         />
       )}
     </div>

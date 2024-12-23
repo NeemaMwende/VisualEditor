@@ -31,7 +31,8 @@ export interface QuestionData {
   answers: Answer[];
   title?: string;      
   difficulty?: number; 
-  tags?: string[];     
+  tags?: string[];   
+  id: number;  
 }
 
 // Markdown Interface
@@ -39,6 +40,14 @@ export interface Markdown {
   id: number;
   content: string;
 }
+
+// export interface MarkdownData {
+//   id: number;
+//   title: string;
+//   content: string;
+//   createdAt: string;
+//   isExpanded?: boolean;
+// }
 
 // Props for SavedQuestionsList Component
 export interface SavedQuestionsListProps {

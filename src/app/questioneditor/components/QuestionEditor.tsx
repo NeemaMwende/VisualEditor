@@ -43,6 +43,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   //initialData,
   //isEditing = false,
   //setIsEditing,
+  onSaveMarkdown 
 }) => {
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
@@ -63,6 +64,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [initialData, setInitialData] = useState<MarkdownData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   // const [currentMarkdown, setCurrentMarkdown] = useState('');
+  const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
+  const [nextMarkdownId, setNextMarkdownId] = useState(1);
 
   const currentMarkdown = useMemo(() => {
     return generateMarkdown({ 
@@ -129,63 +132,77 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setShowMarkdown(true);
   };
 
-  const handleSaveMarkdown = () => {
+
+  useEffect(() => {
+    const savedMarkdowns = localStorage.getItem('markdowns');
+    if (savedMarkdowns) {
+      const parsedMarkdowns: MarkdownData[] = JSON.parse(savedMarkdowns);
+      setMarkdowns(parsedMarkdowns);
+      setNextMarkdownId(parsedMarkdowns.length ? 
+        Math.max(...parsedMarkdowns.map(m => m.id)) + 1 : 1);
+    }
+  }, []);
+
+  const promptForMarkdownTitle = async () => {
+    const title = window.prompt('Enter a title for the markdown:', 'New Markdown');
+    return title || 'Untitled Markdown';
+  };
+
+  const handleSaveMarkdown = async () => {
     try {
       if (!currentMarkdown?.trim()) {
         alert('Cannot save empty markdown content');
         return;
       }
 
-
-      let title = currentFile?.name || initialData?.title;
-      if (!title) {
-        title = prompt('Enter a title for the markdown:', '');
-        if (!title?.trim()) return;
-      }
+      let title = await promptForMarkdownTitle();
+      if (!title) return;
 
       const newMarkdown: MarkdownData = {
+        id: nextMarkdownId,
         title,
         content: currentMarkdown,
         createdAt: new Date().toISOString(),
         type: 'markdown',
-        isVisible: true
+        isVisible: true 
       };
 
       const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
-
       const existingIndex = existingMarkdowns.findIndex(
         (m: MarkdownData) => m.title === title
       );
-
+  
       let updatedMarkdowns;
       if (existingIndex !== -1) {
-       
         updatedMarkdowns = existingMarkdowns.map((m: MarkdownData, index: number) =>
           index === existingIndex ? newMarkdown : m
         );
       } else {
-        
         updatedMarkdowns = [...existingMarkdowns, newMarkdown];
+        setNextMarkdownId(nextMarkdownId + 1);
       }
-
-    
+  
       localStorage.setItem('markdowns', JSON.stringify(updatedMarkdowns));
-
-     
-      setInitialData(newMarkdown);
-      //setMarkdowns(updatedMarkdowns);
-      
-      if (setIsEditing) {
-        setIsEditing(false);
+  
+      setMarkdowns(updatedMarkdowns);
+      setShowMarkdown(false);
+  
+      if (onSaveMarkdown) {
+        onSaveMarkdown(newMarkdown);
       }
-
-
+  
       alert('Markdown saved successfully!');
     } catch (error) {
       console.error('Error saving markdown:', error);
       alert('Failed to save markdown. Please try again.');
     }
   };
+
+  useEffect(() => {
+    if (markdowns.length > 0) {
+      localStorage.setItem('markdowns', JSON.stringify(markdowns));
+    }
+  }, [markdowns]);
 
   const loadSavedMarkdowns = () => {
     try {
@@ -206,6 +223,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const handleSave = () => {
     let savedData: Question;
     
+
     if (isEditing && initialData?.title) {
       savedData = {
         question,
@@ -230,29 +248,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         alert('Failed to update question. Please try again.');
       }
     } else {
-      // const title = prompt('Enter a title for the question:', '');
-      // if (!title) return;
-
-      // savedData = {
-      //   question,
-      //   answers,
-      //   difficulty,
-      //   tags,
-      //   //title,
-      //   type: 'question',
-      //   markdownContent: currentMarkdown
-      // };
 
       savedData = {
         question,
         answers,
         difficulty,
         tags,
-        title: initialData.title,
+        title: currentFile?.name || initialData?.title || '', 
         type: 'question',
         markdownContent: currentMarkdown
       };
       
+
       try {
         const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
         localStorage.setItem('questions', JSON.stringify([...existingQuestions, savedData]));
