@@ -173,10 +173,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
      
       setInitialData(newMarkdown);
+      //setMarkdowns(updatedMarkdowns);
+      
       if (setIsEditing) {
         setIsEditing(false);
       }
-      // setIsEditing(false);
+
 
       alert('Markdown saved successfully!');
     } catch (error) {
@@ -231,16 +233,26 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       // const title = prompt('Enter a title for the question:', '');
       // if (!title) return;
 
+      // savedData = {
+      //   question,
+      //   answers,
+      //   difficulty,
+      //   tags,
+      //   //title,
+      //   type: 'question',
+      //   markdownContent: currentMarkdown
+      // };
+
       savedData = {
         question,
         answers,
         difficulty,
         tags,
-        //title,
+        title: initialData.title,
         type: 'question',
         markdownContent: currentMarkdown
       };
-
+      
       try {
         const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
         localStorage.setItem('questions', JSON.stringify([...existingQuestions, savedData]));
