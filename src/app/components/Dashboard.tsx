@@ -9,6 +9,13 @@ export interface Answer {
   isCorrect?: boolean;
 }
 
+export interface QuestionEditorProps {
+  onSave: (data: QuestionData) => Promise<void>;
+  onSaveMarkdown: (data: MarkdownData) => void;
+  initialData?: QuestionData | MarkdownEditData;
+  isEditing: boolean;
+}
+
 export interface BaseQuestion {
   id: number;
   title: string;
@@ -27,7 +34,14 @@ export interface QuestionData {
   tags?: string[];
   // id: number;
   // content: string;
-  // createdAt: string;
+  //  createdAt: string;
+}
+
+export interface MarkdownEditData{
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface DashboardQuestion extends BaseQuestion {
@@ -35,6 +49,12 @@ export interface DashboardQuestion extends BaseQuestion {
   initialData?: Answer[];
   onEditMarkdown: (markdown: MarkdownData) => void;
 }
+
+export interface EditorQuestion extends QuestionData {
+  isEditing: boolean;
+  id: number;
+}
+
 
 const Dashboard = () => {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
@@ -79,16 +99,17 @@ const Dashboard = () => {
     localStorage.setItem('markdowns', JSON.stringify(updatedMarkdowns));
   };
 
-  const handleEditMarkdown = (markdown: MarkdownData) => {
+  const handleEditMarkdown = (markdown: MarkdownEditData) => {
     setCurrentlyEditingMarkdown(markdown.id);
-    setInitialData({
-      id: markdown.id,
-      title: markdown.title,
-      content: markdown.content,
-      createdAt: markdown.createdAt
-    });
+    const markdownData: QuestionData = {
+      ...markdown,
+      question: '', 
+      answers: [],  
+    };
+    setInitialData(markdownData);
     setShowEditor(true);
   };
+  
 
   const promptForTitle = async () => {
     const title = window.prompt('Enter a title for the question:', 'New Question');
@@ -135,13 +156,14 @@ const Dashboard = () => {
   
   const handleEdit = (question: DashboardQuestion) => {
     setCurrentlyEditing(question.id);
-    setInitialData({
+    const questionData: QuestionData = {
       question: question.question,
       answers: question.answers,
       title: question.title,
       difficulty: question.difficulty,
       tags: question.tags
-    });
+    };
+    setInitialData(questionData);
     setShowEditor(true);
   };
 
@@ -166,18 +188,18 @@ const Dashboard = () => {
       </div>
 
       {showEditor ? (
-        <QuestionEditor
-          onSave={handleSaveQuestion}
-          onSaveMarkdown={handleSaveMarkdown}
-          initialData={initialData}
-          isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
-        />
+      <QuestionEditor
+      onSave={handleSaveQuestion}
+      onSaveMarkdown={handleSaveMarkdown}
+      initialData={initialData as QuestionData | undefined}
+      isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
+    />
       ) : (
         <SavedQuestionsList
           questions={questions}
           onEdit={handleEdit}
           onEditMarkdown={handleEditMarkdown}
-           setQuestions={setQuestions}
+          setQuestions={setQuestions}
           markdowns={markdowns}   
           setMarkdowns={setMarkdowns}
         />

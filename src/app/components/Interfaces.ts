@@ -43,6 +43,21 @@ export interface Markdown {
   content: string;
 }
 
+
+export interface MarkdownEditData{
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface QuestionEditorProps {
+  onSave: (data: QuestionData) => Promise<void>;
+  onSaveMarkdown: (data: MarkdownData) => void;
+  initialData?: QuestionData | MarkdownEditData;
+  isEditing: boolean;
+}
+
 export interface MarkdownData {
   id: number;
   title: string;
