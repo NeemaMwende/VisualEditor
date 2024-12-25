@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Folder, ChevronRight, ChevronDown } from 'lucide-react';
+import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft,  } from 'lucide-react';
 import {
   generateMarkdown,
   parseMarkdownContent,
@@ -47,7 +47,7 @@ interface FileInputProps
 
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onSave,
-  //onBack,
+  onBack,
   initialData,
   isEditing = false,
   //setIsEditing,
@@ -285,8 +285,25 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
   };
 
+  const handleBack = () => {
+    if (question.trim() || answers.some(a => a.text.trim())) {
+      const confirm = window.confirm('You have unsaved changes. Are you sure you want to go back?');
+      if (!confirm) return;
+    }
+    onBack();
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
+       <div className="mb-4">
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+        >
+          <ArrowLeft size={20} />
+          Back to Questions
+        </button>
+      </div>
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="mb-6">
           <div className="flex gap-4 mb-4">
@@ -427,6 +444,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         </div>
 
         <div className="flex justify-end space-x-3">
+        <button
+            onClick={handleBack}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+          >
+            Cancel
+          </button>
           <button
             onClick={() => setShowMarkdown(!showMarkdown)}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"

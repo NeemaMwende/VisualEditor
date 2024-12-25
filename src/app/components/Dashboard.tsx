@@ -119,6 +119,12 @@ const Dashboard = () => {
     setShowEditor(true);
   };
   
+  const handleBack = () => {
+    setShowEditor(false);
+    setCurrentlyEditing(null);
+    setCurrentlyEditingMarkdown(null);
+    setInitialData(undefined);
+  };
 
   const promptForTitle = async () => {
     const title = window.prompt('Enter a title for the question:', 'New Question');
@@ -204,6 +210,7 @@ const Dashboard = () => {
       {showEditor ? (
           <QuestionEditor
           onSave={handleSaveQuestion}
+          onBack={handleBack}
           onSaveMarkdown={handleSaveMarkdown}
           initialData={initialData}
           isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
