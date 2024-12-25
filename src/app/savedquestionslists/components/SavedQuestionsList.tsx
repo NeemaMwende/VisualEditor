@@ -1,7 +1,7 @@
 "use client"
 import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { BaseQuestion } from '../../components/Interfaces';
+import { BaseQuestion, MarkdownData, MarkdownEditData } from '../../components/Interfaces';
 import {
   MarkdownFile,
   generateMarkdown,
@@ -12,14 +12,18 @@ import {
   toggleMarkdownExpand,
   updateMarkdownFile
 } from '../../../utils/markdownUtils';
+import { DashboardQuestion } from '@/app/components/Dashboard';
 
 
 interface SavedQuestionsListProps {
-  questions: BaseQuestion[];
-  onEdit: (question: BaseQuestion) => void;
-  setQuestions: Dispatch<SetStateAction<BaseQuestion[]>>;
-  onExit?: () => void;
+  questions: DashboardQuestion[];
+  onEdit: (question: BaseQuestion | DashboardQuestion) => void;
+  onEditMarkdown: (markdown: MarkdownEditData) => void;
+  setQuestions: Dispatch<SetStateAction<DashboardQuestion[]>>;
+  markdowns: MarkdownData[];
+  setMarkdowns: Dispatch<SetStateAction<MarkdownData[]>>;
 }
+
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({ 
   questions, 

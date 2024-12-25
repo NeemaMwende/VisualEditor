@@ -53,6 +53,11 @@ export interface DashboardQuestion extends BaseQuestion {
 export interface EditorQuestion extends QuestionData {
   isEditing: boolean;
   id: number;
+  question: string;
+  answers: Answer[];
+  title: string;
+  difficulty: number;
+  tags: string[];
 }
 
 
@@ -103,7 +108,7 @@ const Dashboard = () => {
     setCurrentlyEditingMarkdown(markdown.id);
     const markdownData: EditorQuestion = {
       id: markdown.id,
-      title: markdown.title,
+      title: markdown.title || 'Untitled',
       question: '',
       answers: [],
       difficulty: 1,
