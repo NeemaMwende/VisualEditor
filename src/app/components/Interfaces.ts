@@ -64,6 +64,8 @@ export interface MarkdownData {
   content: string;
   createdAt: string;
   isExpanded?: boolean;
+  type: string;
+  isVisible?: boolean;
 }
 
 // Props for SavedQuestionsList Component
