@@ -1,9 +1,6 @@
 "use client"
 import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
-<<<<<<< HEAD
-=======
-//import { X } from 'lucide-react';
->>>>>>> fa9b9403171ab4c638d4afe283526a0c92727b5c
+
 import { BaseQuestion, MarkdownData, MarkdownEditData } from '../../components/Interfaces';
 import {
   MarkdownFile,
