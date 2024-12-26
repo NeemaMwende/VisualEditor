@@ -350,19 +350,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-4">
-<<<<<<< HEAD
           
-=======
-          {/* {onExit && (
-            <button
-              onClick={onExit}
-              className="p-2 hover:bg-gray-100 rounded-full"
-              aria-label="Exit"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          )} */}
->>>>>>> fa9b9403171ab4c638d4afe283526a0c92727b5c
           <div className="space-x-2">
             <button
               onClick={() => setViewMode('questions')}
