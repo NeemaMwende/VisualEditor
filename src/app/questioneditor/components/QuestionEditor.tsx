@@ -141,14 +141,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   };
 
 
+  // useEffect(() => {
+  //   const savedMarkdowns = localStorage.getItem('markdowns');
+  //   if (savedMarkdowns) {
+  //     const parsedMarkdowns: MarkdownData[] = JSON.parse(savedMarkdowns);
+  //     setMarkdowns(parsedMarkdowns);
+  //     setNextMarkdownId(parsedMarkdowns.length ? 
+  //       Math.max(...parsedMarkdowns.map(m => m.id)) + 1 : 1);
+  //   }
+  // }, []);
   useEffect(() => {
-    const savedMarkdowns = localStorage.getItem('markdowns');
-    if (savedMarkdowns) {
-      const parsedMarkdowns: MarkdownData[] = JSON.parse(savedMarkdowns);
-      setMarkdowns(parsedMarkdowns);
-      setNextMarkdownId(parsedMarkdowns.length ? 
-        Math.max(...parsedMarkdowns.map(m => m.id)) + 1 : 1);
-    }
+    const savedMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
+    setMarkdowns(savedMarkdowns);
   }, []);
 
   const promptForMarkdownTitle = async () => {
@@ -192,8 +196,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   
       localStorage.setItem('markdowns', JSON.stringify(updatedMarkdowns));
   
-      setMarkdowns(updatedMarkdowns);
-      setShowMarkdown(false);
+      setMarkdowns([...updatedMarkdowns]);
+      setShowMarkdown(true);
   
       if (onSaveMarkdown) {
         onSaveMarkdown(newMarkdown);
