@@ -15,14 +15,14 @@ export interface BaseQuestion {
   isExpanded?: boolean;
 }
 
-// Question for Editor Component (Full Details)
+// Question for Editor Component
 export interface EditorQuestion extends BaseQuestion {
   initialData?: Answer[]; 
   markdownContent?: string;
   isEditing: boolean;
 }
 
-// Question for List Component (Simplified)
+// Question for List Component 
 export interface ListQuestion extends BaseQuestion {
   onEdit: () => void; 
 }
