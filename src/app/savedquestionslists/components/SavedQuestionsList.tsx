@@ -1,6 +1,6 @@
 "use client"
 import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+//import { X } from 'lucide-react';
 import { BaseQuestion, MarkdownData, MarkdownEditData } from '../../components/Interfaces';
 import {
   MarkdownFile,
@@ -29,7 +29,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   questions, 
   onEdit, 
   setQuestions,
-  onExit 
+  //onExit 
 }) => {
   const [viewMode, setViewMode] = useState<'questions' | 'markdown'>('questions');
   const [markdownFiles, setMarkdownFiles] = useState<MarkdownFile[]>([]);
@@ -350,7 +350,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-4">
-          {onExit && (
+          {/* {onExit && (
             <button
               onClick={onExit}
               className="p-2 hover:bg-gray-100 rounded-full"
@@ -358,7 +358,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
             >
               <X className="w-6 h-6" />
             </button>
-          )}
+          )} */}
           <div className="space-x-2">
             <button
               onClick={() => setViewMode('questions')}
