@@ -37,4 +37,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 # VisualEditor
 
   - Pull command: `docker pull neemamwende/visualeditor`
-  - Run command: `docker run -p 3000:3000 neemamwende/visualeditor`
+  - Run command: `docker run -p 3000:3000 neemamwende/visualeditor` - Docker runs the production build inside a container, isolated from your local environment
+  -  or `npm run dev` - runs in development mode with hot reloading, directly on your machine
