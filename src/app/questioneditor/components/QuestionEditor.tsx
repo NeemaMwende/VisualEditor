@@ -23,7 +23,7 @@ interface Answer {
   isCorrect: boolean;
 }
 
-interface Question {
+export interface Question {
   question: string;
   answers: Answer[];
   difficulty: number;
@@ -83,7 +83,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       tags, 
       title: initialData?.title || currentFile?.name || '' 
     });
-  }, [question, answers, difficulty, tags, initialData?.title, currentFile?.name]);
+  }, [question, answers, difficulty, tags, initialData?.title, currentFile?.name, initialData?.id]);
 
   useEffect(() => {
     if (isEditing && initialData) {

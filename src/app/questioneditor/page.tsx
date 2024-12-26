@@ -1,14 +1,18 @@
-import QuestionEditor from './components/QuestionEditor';
-import { QuestionData } from '../components/Interfaces';
+import QuestionEditor, {Question} from './components/QuestionEditor';
+//import { Question } from './components/QuestionEditor';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-100 p-8">
-      <QuestionEditor onSave={function (data: QuestionData): void {
-        throw new Error('Function not implemented.');
-      } } onBack={function (): void {
-        throw new Error('Function not implemented.');
-      } } />
+      <QuestionEditor 
+        onSave={(data: Question) => {
+          
+          console.log(data);  
+        }} 
+        onBack={() => {
+         console.log("this is a placeholder for the back button");
+        }} 
+      />
     </main>
   );
 }

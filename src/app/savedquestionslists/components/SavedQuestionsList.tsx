@@ -1,6 +1,5 @@
 "use client"
 import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { BaseQuestion, MarkdownData, MarkdownEditData } from '../../components/Interfaces';
 import {
   MarkdownFile,
@@ -80,7 +79,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       id: file.id,
       title: file.title,
       question: file.content,
-      difficulty: 'N/A',
+      difficulty: 1,
       tags: [],
       answers: [],
       isExpanded: false
