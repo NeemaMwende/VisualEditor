@@ -143,7 +143,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
           >
             <div
               className="cursor-pointer"
-              onClick={() => toggleExpand(question.id)}  // Toggle expand when clicked
+              onClick={() => toggleExpand(question.id)} 
             >
               <div className="flex flex-col space-y-2">
                 <h3 className="text-lg font-semibold">{question.title}</h3>

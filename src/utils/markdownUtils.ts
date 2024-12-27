@@ -51,7 +51,7 @@ export const generateMarkdown = (question: BaseQuestion): string => {
   md += '---\n\n\n';
 
   const processedQuestion = detectAndWrapCode(question.question);
-  md += `${processedQuestion}\n`;
+  md += `${processedQuestion}\n\n`;
 
   question.answers.forEach((answer) => {
     const processedAnswer = detectAndWrapCode(answer.text);
