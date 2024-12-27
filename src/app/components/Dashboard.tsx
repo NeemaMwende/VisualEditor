@@ -4,7 +4,7 @@ import QuestionEditor from '../questioneditor/components/QuestionEditor';
 import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
 import { MarkdownData } from '@/app/components/Interfaces';
 export interface Answer {
-  id: number;
+  id: string;
   text: string;
   isCorrect?: boolean;
 }

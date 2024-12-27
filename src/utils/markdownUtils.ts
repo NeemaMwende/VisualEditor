@@ -66,7 +66,7 @@ export const parseMarkdownContent = (content: string) => {
   const lines = content.split('\n');
   const parsedData = {
     question: '',
-    answers: [] as Array<{ id: number; text: string; isCorrect: boolean }>,
+    answers: [] as Array<{ id: string; text: string; isCorrect: boolean }>,
     difficulty: 1,
     tags: [] as string[],
     markdownContent: content

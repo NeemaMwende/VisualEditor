@@ -6,7 +6,7 @@ export interface Answer {
 
 // Base Question Interface (Shared Fields)
 export interface BaseQuestion {
-  id: number;
+  id: string;
   title: string;
   question: string;
   answers: Answer[];
@@ -34,18 +34,18 @@ export interface QuestionData {
   title?: string;      
   difficulty?: number; 
   tags?: string[];   
-  id: number;  
+  id: string;  
 }
 
 // Markdown Interface
 export interface Markdown {
-  id: number;
+  id: string;
   content: string;
 }
 
 
 export interface MarkdownEditData{
-  id: number;
+  id: string;
   title: string;
   content: string;
   createdAt: string;
