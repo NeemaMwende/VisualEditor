@@ -85,7 +85,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   const currentMarkdown = useMemo(() => {
     return generateMarkdown({ 
-      id: initialData?.id || Date.now(),
+      id: String(initialData?.id || Date.now()), 
+
       question, 
       answers, 
       difficulty, 
