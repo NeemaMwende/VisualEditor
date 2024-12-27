@@ -6,6 +6,7 @@ import {
   parseMarkdownContent,
 } from '../../../utils/markdownUtils';
 import { EditorQuestion, MarkdownData } from '@/app/components/Interfaces';
+import { v4 as uuidv4 } from 'uuid';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
@@ -18,7 +19,7 @@ interface QuestionEditorProps {
 }
 
 interface Answer {
-  id: number;
+  id: string;
   text: string;
   isCorrect: boolean;
 }
@@ -46,7 +47,7 @@ interface FileInputProps
 }
 
 interface MarkdownFile {
-  id: number;
+  id: string;
   title: string;
   content: string;
   isExpanded: boolean;
@@ -62,10 +63,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 }) => {
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
-    { id: 1, text: '', isCorrect: false },
-    { id: 2, text: '', isCorrect: false },
-    { id: 3, text: '', isCorrect: false },
-    { id: 4, text: '', isCorrect: false }
+    { id: '1', text: '', isCorrect: false },
+    { id: '2', text: '', isCorrect: false },
+    { id: '3', text: '', isCorrect: false },
+    { id: '4', text: '', isCorrect: false }
+  
   ]);
   const [difficulty, setDifficulty] = useState(1);
   const [tags, setTags] = useState<string[]>([]);
@@ -79,7 +81,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   // const [currentMarkdown, setCurrentMarkdown] = useState('');
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
-  const [nextMarkdownId, setNextMarkdownId] = useState(1);
+  //const [nextMarkdownId, setNextMarkdownId] = useState(1);
 
   const currentMarkdown = useMemo(() => {
     return generateMarkdown({ 
@@ -165,35 +167,33 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         alert('Cannot save empty markdown content');
         return;
       }
-
+  
       const title = await promptForMarkdownTitle();
       if (!title) return;
-
+  
       const newMarkdownFile: MarkdownFile = {
-        id: nextMarkdownId,
+        id: uuidv4(),
         title,
         content: currentMarkdown,
         isExpanded: false
       };
-
+  
       const existingFiles: MarkdownFile[] = JSON.parse(localStorage.getItem('markdownFiles') || '[]');
-      
       const existingIndex = existingFiles.findIndex(f => f.title === title);
       let updatedFiles;
-
+  
       if (existingIndex !== -1) {
         updatedFiles = existingFiles.map((f, index) =>
           index === existingIndex ? { ...newMarkdownFile, id: f.id } : f
         );
       } else {
         updatedFiles = [...existingFiles, newMarkdownFile];
-        setNextMarkdownId(nextMarkdownId + 1);
       }
-
+  
       localStorage.setItem('markdownFiles', JSON.stringify(updatedFiles));
-
+  
       const newMarkdown: MarkdownData = {
-        id: nextMarkdownId,
+        id: newMarkdownFile.id, 
         title,
         content: currentMarkdown,
         createdAt: new Date().toISOString(),
@@ -201,24 +201,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         isVisible: true,
         isExpanded: false
       };
-
+  
       const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
       localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
-
+  
       alert('Markdown saved successfully!');
-      
+  
       if (!isEditing) {
-        setQuestion('');
-        setAnswers([
-          { id: 1, text: '', isCorrect: false },
-          { id: 2, text: '', isCorrect: false },
-          { id: 3, text: '', isCorrect: false },
-          { id: 4, text: '', isCorrect: false }
-        ]);
-        setDifficulty(1);
-        setTags([]);
-        setTagsInput('');
-        setMarkdownContent('');
+        resetEditor();
       }
       
       onBack();
@@ -226,6 +216,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       console.error('Error saving markdown:', error);
       alert('Failed to save markdown. Please try again.');
     }
+  };
+  
+  const resetEditor = () => {
+    setQuestion('');
+    setAnswers([
+      { id: uuidv4(), text: '', isCorrect: false },
+      { id: uuidv4(), text: '', isCorrect: false },
+      { id: uuidv4(), text: '', isCorrect: false },
+      { id: uuidv4(), text: '', isCorrect: false }
+    ]);
+    setDifficulty(1);
+    setTags([]);
+    setTagsInput('');
+    setMarkdownContent('');
   };
 
 

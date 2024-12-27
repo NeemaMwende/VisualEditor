@@ -1,5 +1,5 @@
 export interface Answer {
-  id: number;
+  id: string;
   text: string;
   isCorrect?: boolean; 
 }
@@ -59,7 +59,7 @@ export interface QuestionEditorProps {
 }
 
 export interface MarkdownData {
-  id: number;
+  id: string;
   title: string;
   content: string;
   createdAt: string;
