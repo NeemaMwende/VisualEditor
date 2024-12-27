@@ -48,14 +48,14 @@ export const generateMarkdown = (question: BaseQuestion): string => {
   let md = '---\n';
   md += `difficulty: ${question.difficulty}\n`;
   md += `tags: ${tagString}\n`;
-  md += '---\n\n';
+  md += '---\n\n\n';
 
   const processedQuestion = detectAndWrapCode(question.question);
-  md += `${processedQuestion}\n\n`;
+  md += `${processedQuestion}\n`;
 
   question.answers.forEach((answer) => {
     const processedAnswer = detectAndWrapCode(answer.text);
-    md += `# ${answer.isCorrect ? 'Correct' : ''}\n`;
+    md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
     md += `${processedAnswer}\n\n`;
   });
 
@@ -96,14 +96,14 @@ export const parseMarkdownContent = (content: string) => {
           parsedData.answers.push({
             id: parsedData.answers.length + 1,
             text: currentAnswer.trim(),
-            isCorrect: line.toLowerCase().includes('correct')
+            isCorrect: currentSection === 'correct'
           });
           currentAnswer = '';
         }
-        currentSection = 'answer';
+        currentSection = line.toLowerCase().includes('correct') ? 'correct' : 'answer';
       } else if (line && !parsedData.question && currentSection !== 'answer') {
-        parsedData.question = line;
-      } else if (line && currentSection === 'answer') {
+        parsedData.question = line + '\n\n';
+      } else if (line && currentSection === 'answer' || currentSection === 'correct') {
         currentAnswer += line + '\n';
       }
     }

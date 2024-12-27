@@ -309,7 +309,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           Back to Questions
         </button>
       </div>
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-white form-content p-6 rounded-lg">
         <div className="mb-6">
           <div className="flex gap-4 mb-4">
             <input
