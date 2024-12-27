@@ -234,7 +234,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
     if (editingMarkdown) {
       const content = updatedQuestion.question;
-      const updatedFiles = updateMarkdownFile(markdownFiles, editingMarkdown.id, content);
+      const updatedFiles = updateMarkdownFile(markdownFiles, Number(editingMarkdown.id), content);
       setMarkdownFiles(updatedFiles);
       setEditingMarkdown(null);
       alert('Changes saved successfully');
