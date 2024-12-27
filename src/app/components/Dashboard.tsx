@@ -17,13 +17,14 @@ export interface QuestionEditorProps {
 }
 
 export interface BaseQuestion {
-  id: number;
+  id: string;
   title: string;
   question: string;
   answers: Answer[];
   difficulty: number;
   tags: string[];
   isExpanded?: boolean;
+  onEditMarkdown?: (markdown: MarkdownData) => void;
 }
 
 export interface QuestionData {
@@ -38,7 +39,7 @@ export interface QuestionData {
 }
 
 export interface MarkdownEditData{
-  id: number;
+  id: string;
   title: string;
   content: string;
   createdAt: string;
@@ -52,7 +53,7 @@ export interface DashboardQuestion extends BaseQuestion {
 
 export interface EditorQuestion extends QuestionData {
   isEditing: boolean;
-  id: number;
+  id: string;
   question: string;
   answers: Answer[];
   title: string;
@@ -68,14 +69,14 @@ const Dashboard = () => {
   const [showEditor, setShowEditor] = useState(false);
   const [initialData, setInitialData] = useState<EditorQuestion | undefined>(undefined);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
-  const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<number | null>(null);
+  const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<string | null>(null);
 
   useEffect(() => {
     const savedQuestions = localStorage.getItem('questions');
     if (savedQuestions) {
       const parsedQuestions: DashboardQuestion[] = JSON.parse(savedQuestions);
       setQuestions(parsedQuestions);
-      setNextId(parsedQuestions.length ? parsedQuestions[parsedQuestions.length - 1].id + 1 : 1);
+      setNextId(parsedQuestions.length ? Number(parsedQuestions[parsedQuestions.length - 1].id) + 1 : 1);
     }
   }, []);
 
@@ -135,7 +136,7 @@ const Dashboard = () => {
     if (questionData.question.trim()) {
       if (currentlyEditing !== null) {
         const updatedQuestions = questions.map(q =>
-          q.id === currentlyEditing
+          q.id === String(currentlyEditing)
             ? {
                 ...q,
                 question: questionData.question,
@@ -151,7 +152,7 @@ const Dashboard = () => {
       } else {
         
         const newQuestion: DashboardQuestion = {
-          id: nextId,
+          id: nextId.toString(),
           title: await promptForTitle(),
           question: questionData.question,
           answers: questionData.answers,
@@ -171,7 +172,7 @@ const Dashboard = () => {
   
  const handleEdit = (question: BaseQuestion | DashboardQuestion) => {
   if ('onEditMarkdown' in question) {
-    setCurrentlyEditing(question.id);
+    setCurrentlyEditing(Number(question.id));
     const questionData: EditorQuestion = {
       id: question.id,
       question: question.question,

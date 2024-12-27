@@ -94,7 +94,7 @@ export const parseMarkdownContent = (content: string) => {
       if (line.startsWith('#')) {
         if (currentAnswer) {
           parsedData.answers.push({
-            id: parsedData.answers.length + 1,
+            id: (parsedData.answers.length + 1).toString(),
             text: currentAnswer.trim(),
             isCorrect: currentSection === 'correct'
           });
@@ -111,7 +111,7 @@ export const parseMarkdownContent = (content: string) => {
 
   if (currentAnswer) {
     parsedData.answers.push({
-      id: parsedData.answers.length + 1,
+      id: (parsedData.answers.length + 1).toString(),
       text: currentAnswer.trim(),
       isCorrect: false
     });
@@ -119,7 +119,7 @@ export const parseMarkdownContent = (content: string) => {
 
   while (parsedData.answers.length < 4) {
     parsedData.answers.push({
-      id: parsedData.answers.length + 1,
+      id: (parsedData.answers.length + 1).toString(),
       text: '',
       isCorrect: false
     });

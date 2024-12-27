@@ -43,7 +43,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const handleDelete = (id: number) => {
     if (viewMode === 'questions') {
       if (window.confirm('Are you sure you want to delete this question?')) {
-        setQuestions(questions.filter(q => q.id !== id));
+        setQuestions(questions.filter(q => q.id !== String(id)));
       }
     } else {
       if (window.confirm('Are you sure you want to delete this markdown file?')) {
@@ -56,7 +56,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const toggleExpand = (id: number) => {
     if (viewMode === 'questions') {
       setQuestions(questions.map(q =>
-        q.id === id ? { ...q, isExpanded: !q.isExpanded } : q
+        q.id === String(id) ? { ...q, isExpanded: !q.isExpanded } : q
       ));
     } else {
       const updatedFiles = toggleMarkdownExpand(markdownFiles, id);
@@ -77,7 +77,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const handleEditMarkdown = (file: MarkdownFile) => {
     const markdownQuestion: BaseQuestion = {
-      id: file.id,
+      id: String(file.id),
       title: file.title,
       question: file.content,
       difficulty: 1,
@@ -103,7 +103,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const handleDownload = (id: number) => {
     if (viewMode === 'questions') {
-      const question = questions.find(q => q.id === id);
+      const question = questions.find(q => q.id === String(id));
       if (!question) return;
       const content = generateMarkdown(question);
       const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
@@ -143,7 +143,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
           >
             <div
               className="cursor-pointer"
-              onClick={() => toggleExpand(question.id)} 
+              onClick={() => toggleExpand(Number(question.id))} 
             >
               <div className="flex flex-col space-y-2">
                 <h3 className="text-lg font-semibold">{question.title}</h3>
@@ -173,7 +173,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(question.id);
+                      handleDelete(Number(question.id));
                     }}
                     className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
                   >
@@ -191,7 +191,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDownload(question.id);
+                      handleDownload(Number(question.id));
                     }}
                     className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
                   >

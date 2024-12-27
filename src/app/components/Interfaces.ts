@@ -13,6 +13,13 @@ export interface BaseQuestion {
   difficulty: number;
   tags: string[];
   isExpanded?: boolean;
+  onEditMarkdown?: (markdown: MarkdownData) => void;  
+}
+
+export interface DashboardQuestion extends BaseQuestion {
+  onEdit?: () => void;
+  initialData?: Answer[];
+  onEditMarkdown: (markdown: MarkdownData) => void; 
 }
 
 // Question for Editor Component
