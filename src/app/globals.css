@@ -15,12 +15,12 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  /* color: var(--foreground);
+  background: var(--background); */
   font-family: Arial, Helvetica, sans-serif;
 }
 
-  /* Force consistent text color regardless of OS theme */
+ 
   .form-content input,
   .form-content textarea,
   .form-content select,
@@ -28,12 +28,11 @@ body {
     @apply text-gray-900 !important;
   }
 
-  /* Ensure consistent background */
+ 
   .form-content {
     @apply bg-white;
   }
 
-  /* Override any OS-specific color changes */
   @media (prefers-color-scheme: dark) {
     .form-content input,
     .form-content textarea,
