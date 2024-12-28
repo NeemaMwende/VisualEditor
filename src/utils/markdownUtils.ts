@@ -164,10 +164,10 @@ export const deleteMarkdownFile = (
 
 export const toggleMarkdownExpand = (
   markdownFiles: MarkdownFile[],
-  id: number
+  id: string
 ): MarkdownFile[] => {
   const updatedFiles = markdownFiles.map(m =>
-    m.id === id ? { ...m, isExpanded: !m.isExpanded } : m
+    String(m.id) === id ? { ...m, isExpanded: !m.isExpanded } : m
   );
   saveMarkdownToLocalStorage(updatedFiles);
   return updatedFiles;
