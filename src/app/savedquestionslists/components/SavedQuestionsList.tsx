@@ -134,7 +134,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const renderQuestions = () => (
     <div className="space-y-4">
       {questions.length === 0 ? (
-        <p className="text-center text-gray-500 italic">No questions created yet.</p>
+        <p className="text-center text-gray-500 italic">No questions created yet. Create New Question to get started.</p>
       ) : (
         questions.map((question, index) => (
           <div
@@ -236,7 +236,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
     if (editingMarkdown) {
       const content = updatedQuestion.question;
-      const updatedFiles = updateMarkdownFile(markdownFiles, Number(editingMarkdown.id), content);
+      const updatedFiles = updateMarkdownFile(markdownFiles, String(editingMarkdown.id), content);
       setMarkdownFiles(updatedFiles);
       setEditingMarkdown(null);
       alert('Changes saved successfully');

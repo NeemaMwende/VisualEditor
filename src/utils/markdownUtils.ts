@@ -209,9 +209,9 @@ export interface MarkdownFile {
   isExpanded: boolean;
 }
 
-export const updateMarkdownFile = (files: MarkdownFile[], id: number, content: string): MarkdownFile[] => {
+export const updateMarkdownFile = (files: MarkdownFile[], id: string, content: string): MarkdownFile[] => {
   const updatedFiles = files.map(file =>
-    file.id === id ? { ...file, content } : file
+    String(file.id) === id ? { ...file, content } : file
   );
   saveMarkdownToLocalStorage(updatedFiles);
   return updatedFiles;

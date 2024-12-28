@@ -58,8 +58,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onBack,
   initialData,
   isEditing = false,
-  //setIsEditing,
-  //onSaveMarkdown 
 }) => {
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
@@ -78,10 +76,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // const [currentMarkdown, setCurrentMarkdown] = useState('');
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
-  //const [nextMarkdownId, setNextMarkdownId] = useState(1);
+  
 
   const currentMarkdown = useMemo(() => {
     return generateMarkdown({ 
