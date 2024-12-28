@@ -59,7 +59,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         q.id === String(id) ? { ...q, isExpanded: !q.isExpanded } : q
       ));
     } else {
-      const updatedFiles = toggleMarkdownExpand(markdownFiles, id);
+      const updatedFiles = toggleMarkdownExpand(markdownFiles, (id));
       setMarkdownFiles(updatedFiles);
     }
   };
