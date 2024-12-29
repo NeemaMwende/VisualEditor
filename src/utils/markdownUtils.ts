@@ -100,20 +100,23 @@ export const parseMarkdownContent = (content: string) => {
           });
           currentAnswer = '';
         }
-        currentSection = line.toLowerCase().includes('correct') ? 'correct' : 'answer';
-      } else if (line && !parsedData.question && currentSection !== 'answer') {
+        
+        const headerText = line.slice(1).trim().toLowerCase();
+        currentSection = headerText.includes('correct') ? 'correct' : 'answer';
+      } else if (line && !parsedData.question && currentSection !== 'answer' && currentSection !== 'correct') {
         parsedData.question = line + '\n\n';
-      } else if (line && currentSection === 'answer' || currentSection === 'correct') {
+      } else if (line && (currentSection === 'answer' || currentSection === 'correct')) {
         currentAnswer += line + '\n';
       }
     }
   }
 
+
   if (currentAnswer) {
     parsedData.answers.push({
       id: (parsedData.answers.length + 1).toString(),
       text: currentAnswer.trim(),
-      isCorrect: false
+      isCorrect: currentSection === 'correct'
     });
   }
 
@@ -123,6 +126,16 @@ export const parseMarkdownContent = (content: string) => {
       text: '',
       isCorrect: false
     });
+  }
+
+  const correctAnswers = parsedData.answers.filter(answer => answer.isCorrect);
+  if (correctAnswers.length === 0) {
+    const correctIndex = lines.findIndex(line => 
+      line.trim().startsWith('#') && line.toLowerCase().includes('correct')
+    );
+    if (correctIndex !== -1 && correctIndex < parsedData.answers.length) {
+      parsedData.answers[correctIndex].isCorrect = true;
+    }
   }
 
   return parsedData;
