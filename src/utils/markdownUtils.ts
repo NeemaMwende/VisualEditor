@@ -155,9 +155,9 @@ export const addNewMarkdownFile = (
 
 export const deleteMarkdownFile = (
   markdownFiles: MarkdownFile[],
-  id: number
+  id: string
 ): MarkdownFile[] => {
-  const updatedFiles = markdownFiles.filter(m => m.id !== id);
+  const updatedFiles = markdownFiles.filter(m => m.id.toString() !== id);
   saveMarkdownToLocalStorage(updatedFiles);
   return updatedFiles;
 };

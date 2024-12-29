@@ -40,10 +40,21 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setMarkdownFiles(storedFiles);
   }, [viewMode]);
 
-  const handleDelete = (id: number) => {
+  useEffect(() => {
+    const normalizedQuestions = questions.map(question => ({
+      ...question,
+      id: String(question.id) 
+    }));
+    
+    if (JSON.stringify(questions) !== JSON.stringify(normalizedQuestions)) {
+      setQuestions(normalizedQuestions);
+    }
+  }, []);
+
+  const handleDelete = (id: string) => {
     if (viewMode === 'questions') {
       if (window.confirm('Are you sure you want to delete this question?')) {
-        setQuestions(questions.filter(q => q.id !== id.toString()));  // Fix comparison
+        setQuestions(questions.filter(q => String(q.id) === String(id)));
       }
     } else {
       if (window.confirm('Are you sure you want to delete this markdown file?')) {
@@ -51,6 +62,8 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         setMarkdownFiles(updatedFiles);
       }
     }
+    //console.log('Delete ID:', id, 'Type:', typeof id);
+    //console.log('Question IDs:', questions.map(q => ({ id: q.id, type: typeof q.id })));
   };
 
   const toggleExpand = (id: string) => {
@@ -174,7 +187,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       if (question.id) {
-                        handleDelete(Number(question.id));
+                        handleDelete(String(question.id));
                       }
                     }}
                     className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
@@ -274,7 +287,9 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(file.id);
+                     handleDelete(file.id.toString());
+
+
                     }}
                     className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
                   >
