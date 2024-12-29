@@ -54,7 +54,9 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const handleDelete = (id: string) => {
     if (viewMode === 'questions') {
       if (window.confirm('Are you sure you want to delete this question?')) {
-        setQuestions(questions.filter(q => String(q.id) === String(id)));
+        setQuestions(prevQuestions => 
+          prevQuestions.filter(q => String(q.id) !== String(id))
+        );
       }
     } else {
       if (window.confirm('Are you sure you want to delete this markdown file?')) {
@@ -62,8 +64,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         setMarkdownFiles(updatedFiles);
       }
     }
-    //console.log('Delete ID:', id, 'Type:', typeof id);
-    //console.log('Question IDs:', questions.map(q => ({ id: q.id, type: typeof q.id })));
   };
 
   const toggleExpand = (id: string) => {
