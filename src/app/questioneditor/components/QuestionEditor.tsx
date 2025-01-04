@@ -77,6 +77,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
+  const [title, setTitle] = useState(initialData?.title || '');
   
 
   const currentMarkdown = useMemo(() => {
@@ -99,6 +100,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         isCorrect: answer.isCorrect || false
       })));
       setDifficulty(initialData.difficulty || 1);
+      setTitle(initialData.title || ''); 
       if (initialData.tags) {
         setTags(initialData.tags);
         setTagsInput(initialData.tags.join(', '));
@@ -136,6 +138,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const handleFileClick = (file: FileData) => {
     setCurrentFile(file);
     const parsedData = parseMarkdownContent(file.content);
+    const fileTitle = file.name.replace(/\.[^/.]+$/, '')
+    .split(/[-_\s]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+  
+    setTitle(fileTitle);
     
     setQuestion(parsedData.question);
     setAnswers(parsedData.answers);
@@ -146,17 +154,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setShowMarkdown(true);
   };
 
-
-
   useEffect(() => {
     const savedMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
     setMarkdowns(savedMarkdowns);
   }, []);
 
-  const promptForMarkdownTitle = async () => {
-    const title = window.prompt('Enter a title for the markdown:', 'New Markdown');
-    return title || 'Untitled Markdown';
-  };
 
   const handleSaveMarkdown = async () => {
     try {
@@ -164,21 +166,31 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         alert('Cannot save empty markdown content');
         return;
       }
-  
-      const title = await promptForMarkdownTitle();
-      if (!title) return;
-  
+
+      if (!title.trim() && currentFile?.name) {
+        const fileTitle = currentFile.name.replace(/\.[^/.]+$/, '')
+          .split(/[-_\s]/)
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        setTitle(fileTitle);
+      }
+
+      if (!title.trim()) {
+        alert('Please provide a title');
+        return;
+      }
+
       const newMarkdownFile: MarkdownFile = {
         id: uuidv4(),
         title,
         content: currentMarkdown,
         isExpanded: false
       };
-  
+
       const existingFiles: MarkdownFile[] = JSON.parse(localStorage.getItem('markdownFiles') || '[]');
       const existingIndex = existingFiles.findIndex(f => f.title === title);
       let updatedFiles;
-  
+
       if (existingIndex !== -1) {
         updatedFiles = existingFiles.map((f, index) =>
           index === existingIndex ? { ...newMarkdownFile, id: f.id } : f
@@ -186,11 +198,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       } else {
         updatedFiles = [...existingFiles, newMarkdownFile];
       }
-  
+
       localStorage.setItem('markdownFiles', JSON.stringify(updatedFiles));
-  
+
       const newMarkdown: MarkdownData = {
-        id: newMarkdownFile.id, 
+        id: newMarkdownFile.id,
         title,
         content: currentMarkdown,
         createdAt: new Date().toISOString(),
@@ -198,22 +210,23 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         isVisible: true,
         isExpanded: false
       };
-  
+
       const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
       localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
-  
-      alert('Markdown saved successfully!');
-  
+
+      alert('Saved successfully!');
+      
       if (!isEditing) {
         resetEditor();
       }
       
       onBack();
     } catch (error) {
-      console.error('Error saving markdown:', error);
-      alert('Failed to save markdown. Please try again.');
+      console.error('Error saving:', error);
+      alert('Failed to save. Please try again.');
     }
   };
+
   
   const resetEditor = () => {
     setQuestion('');
@@ -253,53 +266,46 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
 
   const handleSave = () => {
-    let savedData: Question;
-    
+    if (!title.trim()) {
+      if (currentFile?.name) {
+        const fileTitle = currentFile.name.replace(/\.[^/.]+$/, '')
+          .split(/[-_\s]/)
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        setTitle(fileTitle);
+      } else {
+        alert('Please provide a title');
+        return;
+      }
+    }
 
-    if (isEditing && initialData?.title) {
-      savedData = {
-        question,
-        answers,
-        difficulty,
-        tags,
-        title: initialData.title,
-        type: 'question',
-        markdownContent: currentMarkdown
-      };
+    const savedData: Question = {
+      question,
+      answers,
+      difficulty,
+      tags,
+      title,
+      type: 'question',
+      markdownContent: currentMarkdown
+    };
 
-      try {
-        const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
+    try {
+      const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
+      
+      if (isEditing && initialData?.title) {
         const updatedQuestions = existingQuestions.map((q: Question) => 
           q.title === initialData.title ? savedData : q
         );
         localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-        alert('File edited successfully!');
-        onSave(savedData);
-      } catch (error) {
-        console.error('Error updating question:', error);
-        alert('Failed to update question. Please try again.');
-      }
-    } else {
-
-      savedData = {
-        question,
-        answers,
-        difficulty,
-        tags,
-        title: currentFile?.name || initialData?.title || '', 
-        type: 'question',
-        markdownContent: currentMarkdown
-      };
-      
-
-      try {
-        const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
+      } else {
         localStorage.setItem('questions', JSON.stringify([...existingQuestions, savedData]));
-        onSave(savedData);
-      } catch (error) {
-        console.error('Error saving question:', error);
-        alert('Failed to save question. Please try again.');
       }
+      
+      alert('Saved successfully!');
+      onSave(savedData);
+    } catch (error) {
+      console.error('Error saving:', error);
+      alert('Failed to save. Please try again.');
     }
   };
 
@@ -417,6 +423,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div> 
+
+                <div className="w-full">
+                <input
+                  type="text"
+                  placeholder="Title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  readOnly={!!currentFile}
+                />
+              </div>
+
                </div>
 
               <div className="mb-6">

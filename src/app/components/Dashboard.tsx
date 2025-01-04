@@ -127,11 +127,6 @@ const Dashboard = () => {
     setInitialData(undefined);
   };
 
-  const promptForTitle = async () => {
-    const title = window.prompt('Enter a title for the question:', 'New Question');
-    return title || 'Untitled Question';
-  };
-
   const handleSaveQuestion = async (questionData: QuestionData) => {
     if (questionData.question.trim()) {
       if (currentlyEditing !== null) {
@@ -153,7 +148,7 @@ const Dashboard = () => {
         
         const newQuestion: DashboardQuestion = {
           id: nextId.toString(),
-          title: await promptForTitle(),
+          title: questionData.title || 'Untitled',
           question: questionData.question,
           answers: questionData.answers,
           difficulty: 1,
