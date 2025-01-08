@@ -70,7 +70,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   ]);
   const [difficulty, setDifficulty] = useState(1);
   const [tags, setTags] = useState<string[]>([]);
-  const [tagsInput, setTagsInput] = useState('');
+  //const [tagsInput, setTagsInput] = useState('');
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [markdownContent, setMarkdownContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileData[]>([]);
@@ -117,7 +117,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       setTitle(initialData.title || ''); 
       if (initialData.tags) {
         setTags(initialData.tags);
-        setTagsInput(initialData.tags.join(', '));
+        //setTagsInput(initialData.tags.join(', '));
         setMarkdownContent(initialData.markdownContent || '');
       }
     }
@@ -163,7 +163,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setAnswers(parsedData.answers);
     setDifficulty(parsedData.difficulty);
     setTags(parsedData.tags);
-    setTagsInput(parsedData.tags.join(', '));
+    //setTagsInput(parsedData.tags.join(', '));
     setMarkdownContent(file.content);
     setShowMarkdown(true);
   };
@@ -252,7 +252,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     ]);
     setDifficulty(1);
     setTags([]);
-    setTagsInput('');
+    //setTagsInput('');
     setMarkdownContent('');
   };
 
@@ -435,13 +435,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     value={tagsInput}
                     onChange={handleTagsChange}
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  /> */}
+                  />  */}
                   <TagSelector
-  selectedTags={tags}
-  onTagsChange={setTags}
-  files={selectedFiles}
-  className="w-full"
-/>
+                      selectedTags={tags}
+                      onTagsChange={setTags}
+                      files={selectedFiles}
+                      //className="w-full"
+                    />
                 </div> 
 
                 <div className="w-full">
