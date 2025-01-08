@@ -430,18 +430,10 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 </div> 
 
                  <div className="w-full">
-                  {/* <input
-                    type="text"
-                    placeholder="Enter tags here eg advanced-react"
-                    value={tagsInput}
-                    onChange={handleTagsChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />  */}
                   <TagSelector
                       selectedTags={tags}
                       onTagsChange={setTags}
                       files={selectedFiles}
-                      //className="w-full"
                     />
                 </div> 
 
