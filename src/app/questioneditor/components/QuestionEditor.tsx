@@ -82,7 +82,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   
   const randomizeAnswers = () => {
     setAnswers(prevAnswers => {
-      // Create a copy of the answers array
       const shuffledAnswers = [...prevAnswers];
       
       // Fisher-Yates shuffle algorithm
