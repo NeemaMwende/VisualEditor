@@ -13,7 +13,7 @@ interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
   onEditQuestion?: (data: EditorQuestion) => void;
-  initialData?: EditorQuestion;
+  initialData?: EditorQuestion | Question; 
   isEditing?: boolean;
   setIsEditing?: (value: boolean) => void;
   onSaveMarkdown?: (data: MarkdownData) => void;
@@ -26,6 +26,7 @@ interface Answer {
 }
 
 export interface Question {
+  id?: string;
   question: string;
   answers: Answer[];
   difficulty: number;
@@ -108,15 +109,19 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   useEffect(() => {
     if (isEditing && initialData) {
       setQuestion(initialData.question || '');
+      // setAnswers(initialData.answers.map(answer => ({
+      //   ...answer,
+      //   isCorrect: answer.isCorrect || false
+      // })));
       setAnswers(initialData.answers.map(answer => ({
-        ...answer,
+        id: answer.id || uuidv4(),
+        text: answer.text,
         isCorrect: answer.isCorrect || false
       })));
       setDifficulty(initialData.difficulty || 1);
       setTitle(initialData.title || ''); 
       if (initialData.tags) {
         setTags(initialData.tags);
-        //setTagsInput(initialData.tags.join(', '));
         setMarkdownContent(initialData.markdownContent || '');
       }
     }
@@ -162,7 +167,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setAnswers(parsedData.answers);
     setDifficulty(parsedData.difficulty);
     setTags(parsedData.tags);
-    //setTagsInput(parsedData.tags.join(', '));
     setMarkdownContent(file.content);
     setShowMarkdown(true);
   };
@@ -275,8 +279,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     loadSavedMarkdowns();
   }, []);
 
-
-
   const handleSave = () => {
     if (!title.trim()) {
       if (currentFile?.name) {
@@ -292,6 +294,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
 
     const savedData: Question = {
+      id: initialData?.id || uuidv4(),
       question,
       answers,
       difficulty,
