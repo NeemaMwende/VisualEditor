@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft,  } from 'lucide-react';
+import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
 import {
   generateMarkdown,
   parseMarkdownContent,
@@ -79,7 +79,21 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
   const [title, setTitle] = useState(initialData?.title || '');
   
-
+  const randomizeAnswers = () => {
+    setAnswers(prevAnswers => {
+      // Create a copy of the answers array
+      const shuffledAnswers = [...prevAnswers];
+      
+      // Fisher-Yates shuffle algorithm
+      for (let i = shuffledAnswers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
+      }
+      
+      return shuffledAnswers;
+    });
+  };
+  
   const currentMarkdown = useMemo(() => {
     return generateMarkdown({ 
       id: String(initialData?.id || Date.now()), 
@@ -449,39 +463,56 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {answers.map((answer, index) => (
-                  <div key={answer.id} className="relative">
-                    <div className="flex items-center mb-2">
-                      <input
-                        type="checkbox"
-                        checked={answer.isCorrect}
-                        onChange={() => {
-                          const newAnswers = answers.map((ans, i) => ({
-                            ...ans,
-                            isCorrect: i === index
-                          }));
-                          setAnswers(newAnswers);
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <label className="ml-2 text-sm font-medium text-gray-700">
-                        Answer {String.fromCharCode(65 + index)}
-                      </label>
-                    </div>
-                    <textarea
-                      value={answer.text}
-                      onChange={(e) => {
-                        const newAnswers = [...answers];
-                        newAnswers[index] = { ...answer, text: e.target.value };
+              {!showMarkdown && (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <label className="block text-gray-700 text-sm font-bold">
+                Answers
+              </label>
+              <button
+                onClick={randomizeAnswers}
+                className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                <Shuffle size={16} />
+                Randomize Answers
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {answers.map((answer, index) => (
+                <div key={answer.id} className="relative">
+                  <div className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      checked={answer.isCorrect}
+                      onChange={() => {
+                        const newAnswers = answers.map((ans, i) => ({
+                          ...ans,
+                          isCorrect: i === index
+                        }));
                         setAnswers(newAnswers);
                       }}
-                      className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={2}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
+                    <label className="ml-2 text-sm font-medium text-gray-700">
+                      Answer {String.fromCharCode(65 + index)}
+                    </label>
                   </div>
-                ))}
-              </div>
+                  <textarea
+                    value={answer.text}
+                    onChange={(e) => {
+                      const newAnswers = [...answers];
+                      newAnswers[index] = { ...answer, text: e.target.value };
+                      setAnswers(newAnswers);
+                    }}
+                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
             </>
           )}
         </div>
