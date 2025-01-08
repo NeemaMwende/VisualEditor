@@ -82,6 +82,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   return (
     <div className="relative w-full">
       <div className="flex flex-col gap-2">
+
         <div className="flex flex-wrap gap-2 min-h-[42px] p-2 border rounded-md bg-white shadow-sm hover:border-blue-400 transition-colors">
           {selectedTags.map(tag => (
             <span 
