@@ -1,18 +1,19 @@
 "use client"
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
+import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle, } from 'lucide-react';
 import {
   generateMarkdown,
   parseMarkdownContent,
 } from '../../../utils/markdownUtils';
 import { EditorQuestion, MarkdownData } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
+import TagSelector from './TagSelector';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
   onEditQuestion?: (data: EditorQuestion) => void;
-  initialData?: EditorQuestion;
+  initialData?: EditorQuestion | Question; 
   isEditing?: boolean;
   setIsEditing?: (value: boolean) => void;
   onSaveMarkdown?: (data: MarkdownData) => void;
@@ -25,6 +26,7 @@ interface Answer {
 }
 
 export interface Question {
+  id?: string;
   question: string;
   answers: Answer[];
   difficulty: number;
@@ -69,7 +71,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   ]);
   const [difficulty, setDifficulty] = useState(1);
   const [tags, setTags] = useState<string[]>([]);
-  const [tagsInput, setTagsInput] = useState('');
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [markdownContent, setMarkdownContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileData[]>([]);
@@ -81,7 +82,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   
   const randomizeAnswers = () => {
     setAnswers(prevAnswers => {
-      // Create a copy of the answers array
       const shuffledAnswers = [...prevAnswers];
       
       // Fisher-Yates shuffle algorithm
@@ -110,14 +110,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     if (isEditing && initialData) {
       setQuestion(initialData.question || '');
       setAnswers(initialData.answers.map(answer => ({
-        ...answer,
+        id: answer.id || uuidv4(),
+        text: answer.text,
         isCorrect: answer.isCorrect || false
       })));
       setDifficulty(initialData.difficulty || 1);
       setTitle(initialData.title || ''); 
       if (initialData.tags) {
         setTags(initialData.tags);
-        setTagsInput(initialData.tags.join(', '));
         setMarkdownContent(initialData.markdownContent || '');
       }
     }
@@ -133,8 +133,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
     const fileList: FileData[] = [];
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    for (const file of files) {
       if (file.name.endsWith('.md')) {
         const content = await file.text();
         fileList.push({
@@ -144,6 +143,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         });
       }
     }
+    
 
     setSelectedFiles(fileList);
     setShowFileList(true);
@@ -163,7 +163,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setAnswers(parsedData.answers);
     setDifficulty(parsedData.difficulty);
     setTags(parsedData.tags);
-    setTagsInput(parsedData.tags.join(', '));
     setMarkdownContent(file.content);
     setShowMarkdown(true);
   };
@@ -252,7 +251,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     ]);
     setDifficulty(1);
     setTags([]);
-    setTagsInput('');
     setMarkdownContent('');
   };
 
@@ -277,8 +275,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     loadSavedMarkdowns();
   }, []);
 
-
-
   const handleSave = () => {
     if (!title.trim()) {
       if (currentFile?.name) {
@@ -294,6 +290,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
 
     const savedData: Question = {
+      id: initialData?.id || uuidv4(),
       question,
       answers,
       difficulty,
@@ -323,12 +320,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
-  
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
-    setTagsInput(input);
-    setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
-  };
 
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
@@ -429,13 +420,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 </div> 
 
                  <div className="w-full">
-                  <input
-                    type="text"
-                    placeholder="Enter tags here eg advanced-react"
-                    value={tagsInput}
-                    onChange={handleTagsChange}
-                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <TagSelector
+                      selectedTags={tags}
+                      onTagsChange={setTags}
+                      files={selectedFiles}
+                    />
                 </div> 
 
                 <div className="w-full">
