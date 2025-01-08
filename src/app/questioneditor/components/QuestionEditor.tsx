@@ -109,10 +109,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   useEffect(() => {
     if (isEditing && initialData) {
       setQuestion(initialData.question || '');
-      // setAnswers(initialData.answers.map(answer => ({
-      //   ...answer,
-      //   isCorrect: answer.isCorrect || false
-      // })));
       setAnswers(initialData.answers.map(answer => ({
         id: answer.id || uuidv4(),
         text: answer.text,
@@ -137,8 +133,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
     const fileList: FileData[] = [];
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    for (const file of files) {
       if (file.name.endsWith('.md')) {
         const content = await file.text();
         fileList.push({
@@ -148,6 +143,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         });
       }
     }
+    
 
     setSelectedFiles(fileList);
     setShowFileList(true);
@@ -324,12 +320,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
-  
-  // const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const input = e.target.value;
-  //   setTagsInput(input);
-  //   setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
-  // };
 
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
