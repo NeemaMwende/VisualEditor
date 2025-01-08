@@ -70,7 +70,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   ]);
   const [difficulty, setDifficulty] = useState(1);
   const [tags, setTags] = useState<string[]>([]);
-  //const [tagsInput, setTagsInput] = useState('');
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [markdownContent, setMarkdownContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileData[]>([]);
@@ -252,7 +251,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     ]);
     setDifficulty(1);
     setTags([]);
-    //setTagsInput('');
     setMarkdownContent('');
   };
 

@@ -12,14 +12,12 @@ interface TagSelectorProps {
   selectedTags: string[];
   onTagsChange: (tags: string[]) => void;
   files: FileData[];
-  //className?: string;
 }
 
 const TagSelector: React.FC<TagSelectorProps> = ({ 
   selectedTags, 
   onTagsChange, 
   files,
-  //className = "" 
 }) => {
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -27,22 +25,26 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   const [allUsedTags, setAllUsedTags] = useState<string[]>([]);
   
   useEffect(() => {
-    const fileTags = files.reduce<string[]>((tags, file) => {
-      try {
-        const parsedData = parseMarkdownContent(file.content);
-        return [...tags, ...(parsedData.tags || [])];
-      } catch (error) {
-        console.error('Error parsing file:', file.name, error);
-        return tags;
-      }
-    }, []);
+    const loadTags = () => {
+      const fileTags = files.reduce<string[]>((tags, file) => {
+        try {
+          const parsedData = parseMarkdownContent(file.content);
+          return [...tags, ...(parsedData.tags || [])];
+        } catch (error) {
+          console.error('Error parsing file:', file.name, error);
+          return tags;
+        }
+      }, []);
 
-    const storedTags = JSON.parse(localStorage.getItem('usedTags') || '[]');
-    
-    const uniqueTags = [...new Set([...fileTags, ...storedTags])].sort();
-    setAvailableTags(uniqueTags);
-    setAllUsedTags(uniqueTags);
-  }, [files]);
+      const storedTags = JSON.parse(localStorage.getItem('usedTags') || '[]');
+      const uniqueTags = [...new Set([...fileTags, ...storedTags, ...selectedTags])].sort();
+      
+      setAvailableTags(uniqueTags);
+      setAllUsedTags(uniqueTags);
+    };
+
+    loadTags();
+  }, [files, selectedTags]);
 
   const filteredTags = availableTags.filter(tag =>
     tag.toLowerCase().includes(searchTerm.toLowerCase())
@@ -53,11 +55,14 @@ const TagSelector: React.FC<TagSelectorProps> = ({
       ? selectedTags.filter(t => t !== tag)
       : [...selectedTags, tag];
     onTagsChange(newTags);
+    
+    if (!selectedTags.includes(tag)) {
+      const updatedUsedTags = [...new Set([...allUsedTags, tag])];
+      setAllUsedTags(updatedUsedTags);
+      localStorage.setItem('usedTags', JSON.stringify(updatedUsedTags));
+    }
+    setSearchTerm('');
     setIsOpen(false);
-
-    const updatedUsedTags = [...new Set([...allUsedTags, tag])];
-    setAllUsedTags(updatedUsedTags);
-    localStorage.setItem('usedTags', JSON.stringify(updatedUsedTags));
   };
 
   const removeTag = (tagToRemove: string): void => {
@@ -67,6 +72,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchTerm(event.target.value);
+    if (!isOpen) setIsOpen(true);
   };
 
   const handleNewTagSubmit = (event: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -74,7 +80,6 @@ const TagSelector: React.FC<TagSelectorProps> = ({
       const trimmedTag = searchTerm.trim();
       if (!selectedTags.includes(trimmedTag)) {
         toggleTag(trimmedTag);
-        setSearchTerm('');
       }
     }
   };
@@ -82,49 +87,41 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   return (
     <div className="relative w-full">
       <div className="flex flex-col gap-2">
-
-        <div className="flex flex-wrap gap-2 min-h-[42px] p-2 border rounded-md bg-white shadow-sm hover:border-blue-400 transition-colors">
-          {selectedTags.map(tag => (
-            <span 
-              key={tag} 
-              className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium animate-fadeIn"
-            >
-              {tag}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeTag(tag);
-                }}
-                className="hover:text-blue-600 transition-colors"
-                type="button"
-                aria-label={`Remove ${tag} tag`}
+        <div 
+          className="flex flex-wrap gap-2 min-h-[42px] p-2 border rounded-md bg-white shadow-sm hover:border-blue-400 transition-colors cursor-pointer"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          {selectedTags.length > 0 ? (
+            selectedTags.map(tag => (
+              <span 
+                key={tag} 
+                className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
               >
-                <X size={14} />
-              </button>
-            </span>
-          ))}
-          
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 ml-auto transition-colors"
-            type="button"
-            aria-expanded={isOpen}
-            aria-label="Toggle tag selection"
-          >
-            <ChevronDown 
-              size={20} 
-              className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
+                {tag}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTag(tag);
+                  }}
+                  className="hover:text-blue-600 transition-colors"
+                  type="button"
+                  aria-label={`Remove ${tag} tag`}
+                >
+                  <X size={14} />
+                </button>
+              </span>
+            ))
+          ) : (
+            <span className="text-gray-500">Select or create tags...</span>
+          )}
+          <ChevronDown 
+            size={20} 
+            className={`transform transition-transform duration-200 ml-auto ${isOpen ? 'rotate-180' : ''}`}
+          />
         </div>
 
-        {/* Dropdown for tag selection */}
         {isOpen && (
-          <div 
-            className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg animate-slideDown"
-            role="listbox"
-            aria-label="Available tags"
-          >
+          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
             <div className="p-2 border-b">
               <div className="relative">
                 <input
