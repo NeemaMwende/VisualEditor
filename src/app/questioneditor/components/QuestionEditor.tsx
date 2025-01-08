@@ -1,12 +1,13 @@
 "use client"
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
+import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle, } from 'lucide-react';
 import {
   generateMarkdown,
   parseMarkdownContent,
 } from '../../../utils/markdownUtils';
 import { EditorQuestion, MarkdownData } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
+import TagSelector from './TagSelector';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
@@ -324,11 +325,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   };
 
   
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
-    setTagsInput(input);
-    setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
-  };
+  // const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const input = e.target.value;
+  //   setTagsInput(input);
+  //   setTags(input.split(',').map(tag => tag.trim()).filter(tag => tag));
+  // };
 
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
@@ -429,13 +430,19 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 </div> 
 
                  <div className="w-full">
-                  <input
+                  {/* <input
                     type="text"
                     placeholder="Enter tags here eg advanced-react"
                     value={tagsInput}
                     onChange={handleTagsChange}
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  /> */}
+                  <TagSelector
+  selectedTags={tags}
+  onTagsChange={setTags}
+  files={selectedFiles}
+  className="w-full"
+/>
                 </div> 
 
                 <div className="w-full">
