@@ -1,59 +1,112 @@
+// app/api/questions/[id]/route.ts
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
-
-export async function PUT(
-  req: Request,
+export async function GET(
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const data = await req.json();
-    const question = await prisma.question.update({
-      where: { id: params.id },
+    const question = await prisma.question.findUnique({
+      where: {
+        id: params.id
+      },
+      include: {
+        answers: true,
+        tags: true
+      }
+    });
+
+    if (!question) {
+      return NextResponse.json(
+        { message: 'Question not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(question);
+  } catch (error) {
+    console.error('Error fetching question:', error);
+    return NextResponse.json(
+      { message: 'Failed to fetch question', error: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const data = await request.json();
+
+    // Delete existing answers and tags
+    await prisma.answer.deleteMany({
+      where: {
+        questionId: params.id
+      }
+    });
+
+    // Update question with new data
+    const updatedQuestion = await prisma.question.update({
+      where: {
+        id: params.id
+      },
       data: {
         title: data.title,
         question: data.question,
         difficulty: data.difficulty,
-        markdownContent: data.markdownContent,
         type: data.type,
+        markdownContent: data.markdownContent,
         answers: {
-          deleteMany: {},
           create: data.answers.map((answer: any) => ({
             text: answer.text,
-            isCorrect: answer.isCorrect,
-          })),
+            isCorrect: answer.isCorrect
+          }))
         },
         tags: {
-          set: [],
+          set: [], // Remove existing tags
           connectOrCreate: data.tags.map((tag: string) => ({
             where: { name: tag },
-            create: { name: tag },
-          })),
-        },
+            create: { name: tag }
+          }))
+        }
       },
       include: {
         answers: true,
-        tags: true,
-      },
+        tags: true
+      }
     });
-    return NextResponse.json(question);
+
+    return NextResponse.json(updatedQuestion);
   } catch (error) {
-    console.error('PUT request error:', error);
-    return NextResponse.json({ error: 'Error updating question' }, { status: 500 });
+    console.error('Error updating question:', error);
+    return NextResponse.json(
+      { message: 'Failed to update question', error: String(error) },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(
-  req: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Delete the question (cascade delete will handle related records)
     await prisma.question.delete({
-      where: { id: params.id },
+      where: {
+        id: params.id
+      }
     });
-    return NextResponse.json({ message: 'Question deleted' });
+
+    return NextResponse.json({ message: 'Question deleted successfully' });
   } catch (error) {
-    console.error('DELETE request error:', error);
-    return NextResponse.json({ error: 'Error deleting question' }, { status: 500 });
+    console.error('Error deleting question:', error);
+    return NextResponse.json(
+      { message: 'Failed to delete question', error: String(error) },
+      { status: 500 }
+    );
   }
 }
