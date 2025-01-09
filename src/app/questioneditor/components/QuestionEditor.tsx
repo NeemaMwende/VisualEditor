@@ -323,8 +323,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
   
-
-
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
       const confirm = window.confirm('You have unsaved changes. Are you sure you want to go back?');
@@ -367,7 +365,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 onClick={() => setShowFileList(!showFileList)}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 flex items-center gap-2"
               >
-                {showFileList ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                {showFileList ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                 {selectedFiles.length} Files
               </button>
             )}
