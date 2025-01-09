@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Question {
+  id              String    @id @default(uuid())
+  title           String
+  question        String    @db.Text
+  difficulty      Int
+  markdownContent String?   @db.Text
+  type            String?   @default("question")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  answers         Answer[]
+  tags            QuestionTag[]
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  text       String   @db.Text
+  isCorrect  Boolean
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+}
+
+model Tag {
+  id   String @id @default(uuid())
+  name String @unique
+  questions QuestionTag[]
+}
+
+model QuestionTag {
+  id         String   @id @default(uuid())
+  questionId String
+  tagId      String
+  question   Question @relation(fields: [questionId], references: [id])
+  tag        Tag      @relation(fields: [tagId], references: [id])
+
+  @@unique([questionId, tagId])
+}
