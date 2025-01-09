@@ -2,72 +2,54 @@
 import React, { useState, useEffect } from 'react';
 import QuestionEditor from '../questioneditor/components/QuestionEditor';
 import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
-import { MarkdownData } from '@/app/components/Interfaces';
+import { MarkdownData, BaseQuestion } from '@/app/components/Interfaces';
+
 export interface Answer {
   id: string;
   text: string;
-  isCorrect?: boolean;
+  isCorrect: boolean; 
 }
 
-export interface QuestionEditorProps {
-  onSave: (data: QuestionData) => Promise<void>;
-  onSaveMarkdown: (data: MarkdownData) => void;
-  initialData?: QuestionData | MarkdownEditData;
-  isEditing: boolean;
-}
-
-export interface BaseQuestion {
+export interface Question {
   id: string;
   title: string;
   question: string;
   answers: Answer[];
   difficulty: number;
   tags: string[];
-  isExpanded?: boolean;
-  onEditMarkdown?: (markdown: MarkdownData) => void;
+  type?: 'question' | 'markdown';
+  markdownContent?: string;
 }
 
 export interface QuestionData {
+  id?: string;
   question: string;
   answers: Answer[];
-  title?: string;
-  difficulty?: number;
-  tags?: string[];
-  // id: number;
-  // content: string;
-  //  createdAt: string;
+  title: string;  
+  difficulty: number;  
+  tags: string[];  
 }
 
-export interface MarkdownEditData{
+export interface MarkdownEditData {
   id: string;
   title: string;
   content: string;
   createdAt: string;
 }
 
-export interface DashboardQuestion extends BaseQuestion {
+export interface DashboardQuestion extends Question {
   onEdit?: () => void;
   initialData?: Answer[];
   onEditMarkdown: (markdown: MarkdownData) => void;
+  isExpanded?: boolean;
 }
-
-export interface EditorQuestion extends QuestionData {
-  isEditing: boolean;
-  id: string;
-  question: string;
-  answers: Answer[];
-  title: string;
-  difficulty: number;
-  tags: string[];
-}
-
 
 const Dashboard = () => {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
-  const [currentlyEditing, setCurrentlyEditing] = useState<number | null>(null);
+  const [currentlyEditing, setCurrentlyEditing] = useState<string | null>(null);
   const [nextId, setNextId] = useState(1);
   const [showEditor, setShowEditor] = useState(false);
-  const [initialData, setInitialData] = useState<EditorQuestion | undefined>(undefined);
+  const [initialData, setInitialData] = useState<Question | undefined>(undefined);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
   const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<string | null>(null);
 
@@ -107,19 +89,19 @@ const Dashboard = () => {
 
   const handleEditMarkdown = (markdown: MarkdownEditData) => {
     setCurrentlyEditingMarkdown(markdown.id);
-    const markdownData: EditorQuestion = {
+    const markdownData: Question = {
       id: markdown.id,
       title: markdown.title || 'Untitled',
       question: '',
       answers: [],
       difficulty: 1,
       tags: [],
-      isEditing: true
+      type: 'markdown'
     };
     setInitialData(markdownData);
     setShowEditor(true);
   };
-  
+
   const handleBack = () => {
     setShowEditor(false);
     setCurrentlyEditing(null);
@@ -131,57 +113,56 @@ const Dashboard = () => {
     if (questionData.question.trim()) {
       if (currentlyEditing !== null) {
         const updatedQuestions = questions.map(q =>
-          q.id === String(currentlyEditing)
+          q.id === currentlyEditing
             ? {
                 ...q,
                 question: questionData.question,
                 answers: questionData.answers,
-                tags: questionData.tags || q.tags,
-                difficulty: questionData.difficulty || q.difficulty,
-                title: questionData.title || q.title,
+                tags: questionData.tags,
+                difficulty: questionData.difficulty,
+                title: questionData.title,
               }
             : q
         );
         setQuestions(updatedQuestions);
         setCurrentlyEditing(null);
       } else {
-        
         const newQuestion: DashboardQuestion = {
           id: nextId.toString(),
-          title: questionData.title || 'Untitled',
+          title: questionData.title,
           question: questionData.question,
           answers: questionData.answers,
-          difficulty: 1,
-          tags: questionData.tags || [],
+          difficulty: questionData.difficulty,
+          tags: questionData.tags,
           isExpanded: false,
           onEditMarkdown: () => {},
+          type: 'question'
         };
         setQuestions([...questions, newQuestion]);
         setNextId(nextId + 1);
       }
-  
       setShowEditor(false);
       setInitialData(undefined);
     }
   };
-  
- const handleEdit = (question: BaseQuestion | DashboardQuestion) => {
-  if ('onEditMarkdown' in question) {
-    setCurrentlyEditing(Number(question.id));
-    const questionData: EditorQuestion = {
+
+  const handleEdit = (question: BaseQuestion | DashboardQuestion) => {
+    setCurrentlyEditing(question.id);
+    const questionData: Question = {
       id: question.id,
       question: question.question,
-      answers: question.answers,
+      answers: question.answers.map(a => ({
+        ...a,
+        isCorrect: a.isCorrect || false  // Ensure isCorrect is always boolean
+      })),
       title: question.title,
       difficulty: question.difficulty,
       tags: question.tags,
-      isEditing: true,
+      type: 'question'
     };
     setInitialData(questionData);
     setShowEditor(true);
-  }
-};
-
+  };
 
   const handleNewQuestion = () => {
     setCurrentlyEditing(null);
@@ -204,7 +185,7 @@ const Dashboard = () => {
       </div>
 
       {showEditor ? (
-          <QuestionEditor
+        <QuestionEditor
           onSave={handleSaveQuestion}
           onBack={handleBack}
           onSaveMarkdown={handleSaveMarkdown}
@@ -214,10 +195,10 @@ const Dashboard = () => {
       ) : (
         <SavedQuestionsList
           questions={questions}
-          onEdit={(question: BaseQuestion | DashboardQuestion) => handleEdit(question)}
+          onEdit={handleEdit}
           onEditMarkdown={handleEditMarkdown}
           setQuestions={setQuestions}
-          markdowns={markdowns}   
+          markdowns={markdowns}
           setMarkdowns={setMarkdowns}
         />
       )}

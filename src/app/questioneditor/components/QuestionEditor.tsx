@@ -108,12 +108,15 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   useEffect(() => {
     if (isEditing && initialData) {
+      console.log("Initial Data for Editing:", initialData);
       setQuestion(initialData.question || '');
-      setAnswers(initialData.answers.map(answer => ({
-        id: answer.id || uuidv4(),
-        text: answer.text,
-        isCorrect: answer.isCorrect || false
-      })));
+      setAnswers(
+        (initialData.answers || []).map((answer) => ({
+          id: answer.id || uuidv4(),
+          text: answer.text || "",
+          isCorrect: !!answer.isCorrect,
+        }))
+      );
       setDifficulty(initialData.difficulty || 1);
       setTitle(initialData.title || ''); 
       if (initialData.tags) {
@@ -301,24 +304,25 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     };
 
     try {
-      const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
-      
-      if (isEditing && initialData?.title) {
-        const updatedQuestions = existingQuestions.map((q: Question) => 
-          q.title === initialData.title ? savedData : q
+      const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
+  
+      if (isEditing) {
+        const updatedQuestions = existingQuestions.map((q: Question) =>
+          q.id === initialData?.id ? savedData : q
         );
-        localStorage.setItem('questions', JSON.stringify(updatedQuestions));
+        localStorage.setItem("questions", JSON.stringify(updatedQuestions));
       } else {
-        localStorage.setItem('questions', JSON.stringify([...existingQuestions, savedData]));
+        localStorage.setItem("questions", JSON.stringify([...existingQuestions, savedData]));
       }
-      
-      alert('Saved successfully!');
+  
+      alert("Saved successfully!");
       onSave(savedData);
     } catch (error) {
-      console.error('Error saving:', error);
-      alert('Failed to save. Please try again.');
+      console.error("Error saving:", error);
+      alert("Failed to save. Please try again.");
     }
   };
+  
 
 
   const handleBack = () => {
