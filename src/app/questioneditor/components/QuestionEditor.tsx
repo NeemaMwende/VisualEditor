@@ -79,7 +79,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
   const [title, setTitle] = useState(initialData?.title || '');
-  const [isOpen, setIsOpen ] = useState(false);
 
   const randomizeAnswers = () => {
     setAnswers(prevAnswers => {
