@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import QuestionEditor from '../questioneditor/components/QuestionEditor';
 import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
-import { MarkdownData } from '@/app/components/Interfaces';
+import { MarkdownData, BaseQuestion } from '@/app/components/Interfaces';
 
 export interface Answer {
   id: string;
   text: string;
-  isCorrect: boolean;  // Changed from boolean | undefined to boolean
+  isCorrect: boolean; 
 }
 
 export interface Question {
@@ -25,9 +25,9 @@ export interface QuestionData {
   id?: string;
   question: string;
   answers: Answer[];
-  title: string;  // Changed from optional to required
-  difficulty: number;  // Changed from optional to required
-  tags: string[];  // Changed from optional to required
+  title: string;  
+  difficulty: number;  
+  tags: string[];  
 }
 
 export interface MarkdownEditData {
@@ -146,7 +146,7 @@ const Dashboard = () => {
     }
   };
 
-  const handleEdit = (question: Question | DashboardQuestion) => {
+  const handleEdit = (question: BaseQuestion | DashboardQuestion) => {
     setCurrentlyEditing(question.id);
     const questionData: Question = {
       id: question.id,
