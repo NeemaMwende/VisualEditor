@@ -5,7 +5,6 @@ import { BaseQuestion, MarkdownData, MarkdownEditData } from '../../components/I
 import {
   MarkdownFile,
   generateMarkdown,
-  //saveMarkdownToLocalStorage,
   getMarkdownFromLocalStorage,
   addNewMarkdownFile,
   deleteMarkdownFile,
@@ -29,7 +28,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   questions, 
   onEdit, 
   setQuestions,
-  //onExit 
 }) => {
   const [viewMode, setViewMode] = useState<'questions' | 'markdown'>('questions');
   const [markdownFiles, setMarkdownFiles] = useState<MarkdownFile[]>([]);
@@ -41,15 +39,33 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   }, [viewMode]);
 
   useEffect(() => {
-    const normalizedQuestions = questions.map(question => ({
+    const normalizedQuestions = questions.map((question) => ({
       ...question,
-      id: String(question.id) 
+      id: question.id || String(Date.now() + Math.random()),
+      title: question.title || "Untitled Question",
+      question: question.question || "",
+      answers: question.answers || [
+        { id: String(Date.now() + 1), text: "", isCorrect: false },
+        { id: String(Date.now() + 2), text: "", isCorrect: false },
+        { id: String(Date.now() + 3), text: "", isCorrect: false },
+        { id: String(Date.now() + 4), text: "", isCorrect: false },
+      ],
+      difficulty: question.difficulty || 1,
+      tags: question.tags || [],
     }));
-    
+  
     if (JSON.stringify(questions) !== JSON.stringify(normalizedQuestions)) {
       setQuestions(normalizedQuestions);
     }
-  }, []);
+  }, [questions.length]);
+  
+
+  const handleEditClick = (question: DashboardQuestion) => {
+    console.log("Editing Question:", question);
+    onEdit(question);
+  };
+  
+  
 
   const handleDelete = (id: string) => {
     if (viewMode === 'questions') {
@@ -101,6 +117,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setEditingMarkdown(markdownQuestion);
     setViewMode('markdown');
   };
+  
 
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/markdown' });
@@ -177,7 +194,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEdit(question);
+                      handleEditClick(question);
                     }}
                     className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
                   >
