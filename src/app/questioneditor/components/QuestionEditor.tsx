@@ -2,18 +2,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
-import { EditorQuestion, MarkdownData } from '@/app/components/Interfaces';
+import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
-  onEditQuestion?: (data: EditorQuestion) => void;
   initialData?: EditorQuestion | Question;
   isEditing?: boolean;
-  setIsEditing?: (value: boolean) => void;
-  onSaveMarkdown?: (data: MarkdownData) => void;
 }
 
 interface Answer {
@@ -39,18 +36,6 @@ interface FileData {
   path: string;
 }
 
-// interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-//   webkitdirectory?: string;
-//   directory?: string;
-// }
-
-interface MarkdownFile {
-  id: string;
-  title: string;
-  content: string;
-  isExpanded: boolean;
-}
-
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onSave,
   onBack,
@@ -68,12 +53,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [tags, setTags] = useState<string[]>([]);
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [markdownContent, setMarkdownContent] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<FileData[]>([]);
+  const [selectedFiles] = useState<FileData[]>([]);
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
-  const [showFileList, setShowFileList] = useState(false);
   const [title, setTitle] = useState(initialData?.title || '');
-  //const fileInputRef = useRef<HTMLInputElement>(null);
-  //const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
 
   const randomizeAnswers = () => {
     setAnswers(prevAnswers => {
@@ -120,7 +102,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setMarkdownContent(currentMarkdown);
   }, [currentMarkdown]);
 
-  // New effect to sync markdown changes with question state
   useEffect(() => {
     if (showMarkdown) {
       try {
@@ -142,25 +123,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         console.error('Error parsing markdown:', error);
       }
     }
-  }, [markdownContent, showMarkdown]);
-
-
-  const handleFileClick = (file: FileData) => {
-    setCurrentFile(file);
-    const parsedData = parseMarkdownContent(file.content);
-    const fileTitle = file.name.replace(/\.[^/.]+$/, '')
-      .split(/[-_\s]/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-
-    setTitle(fileTitle);
-    setQuestion(parsedData.question);
-    setAnswers(parsedData.answers);
-    setDifficulty(parsedData.difficulty);
-    setTags(parsedData.tags);
-    setMarkdownContent(file.content);
-    setShowMarkdown(true);
-  };
+  }, [markdownContent, showMarkdown, answers]);
 
   const handleMarkdownUpdate = (newContent: string) => {
     setMarkdownContent(newContent);
@@ -171,86 +134,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       setDifficulty(parsedData.difficulty);
       setTags(parsedData.tags);
     }
-  };
-
-  // const handleSaveMarkdown = async () => {
-  //   try {
-  //     if (!currentMarkdown?.trim()) {
-  //       alert('Cannot save empty markdown content');
-  //       return;
-  //     }
-
-  //     if (!title.trim() && currentFile?.name) {
-  //       const fileTitle = currentFile.name.replace(/\.[^/.]+$/, '')
-  //         .split(/[-_\s]/)
-  //         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-  //         .join(' ');
-  //       setTitle(fileTitle);
-  //     }
-
-  //     if (!title.trim()) {
-  //       alert('Please provide a title');
-  //       return;
-  //     }
-
-  //     const newMarkdownFile: MarkdownFile = {
-  //       id: uuidv4(),
-  //       title,
-  //       content: currentMarkdown,
-  //       isExpanded: false
-  //     };
-
-  //     const existingFiles: MarkdownFile[] = JSON.parse(localStorage.getItem('markdownFiles') || '[]');
-  //     const existingIndex = existingFiles.findIndex(f => f.title === title);
-  //     let updatedFiles;
-
-  //     if (existingIndex !== -1) {
-  //       updatedFiles = existingFiles.map((f, index) =>
-  //         index === existingIndex ? { ...newMarkdownFile, id: f.id } : f
-  //       );
-  //     } else {
-  //       updatedFiles = [...existingFiles, newMarkdownFile];
-  //     }
-
-  //     localStorage.setItem('markdownFiles', JSON.stringify(updatedFiles));
-
-  //     const newMarkdown: MarkdownData = {
-  //       id: newMarkdownFile.id,
-  //       title,
-  //       content: currentMarkdown,
-  //       createdAt: new Date().toISOString(),
-  //       type: 'markdown',
-  //       isVisible: true,
-  //       isExpanded: false
-  //     };
-
-  //     const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
-  //     localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
-
-  //     alert('Saved successfully!');
-
-  //     if (!isEditing) {
-  //       resetEditor();
-  //     }
-
-  //     onBack();
-  //   } catch (error) {
-  //     console.error('Error saving:', error);
-  //     alert('Failed to save. Please try again.');
-  //   }
-  // };
-
-  const resetEditor = () => {
-    setQuestion('');
-    setAnswers([
-      { id: uuidv4(), text: '', isCorrect: false },
-      { id: uuidv4(), text: '', isCorrect: false },
-      { id: uuidv4(), text: '', isCorrect: false },
-      { id: uuidv4(), text: '', isCorrect: false }
-    ]);
-    setDifficulty(1);
-    setTags([]);
-    setMarkdownContent('');
   };
 
   const handleSave = () => {
@@ -305,7 +188,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       alert("Failed to save. Please try again.");
     }
   };
-  
 
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
@@ -452,7 +334,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-6 border-t">
           <button
             onClick={handleBack}

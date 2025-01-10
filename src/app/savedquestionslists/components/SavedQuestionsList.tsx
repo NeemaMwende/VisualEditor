@@ -16,11 +16,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 }) => {
   const [editingMarkdown, setEditingMarkdown] = useState<{id: string, content: string} | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
-  
-  const handleEditClick = (question: DashboardQuestion) => {
-    console.log("Editing Question:", question);
-    onEdit(question);
-  };
 
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
@@ -85,7 +80,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         setQuestions(updatedQuestions);
         setEditingMarkdown(null);
       } catch (error) {
-        alert('Error parsing markdown content. Please check the format and try again.');
+        alert('Error parsing markdown content. Please check the format and try again.', error);
       }
     }
   };
@@ -114,7 +109,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       alert('Please select questions to download');
       return;
     }
-
     questions
       .filter(q => selectedQuestions.includes(String(q.id)))
       .forEach(question => {
@@ -278,7 +272,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleEditClick(question);
+                              onEdit(question);
                             }}
                             className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                           >
