@@ -1,7 +1,7 @@
 export interface Answer {
   id: string;
   text: string;
-  isCorrect?: boolean; 
+  isCorrect: boolean; 
 }
 
 // Base Question Interface (Shared Fields)

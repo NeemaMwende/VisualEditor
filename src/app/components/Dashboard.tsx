@@ -1,8 +1,16 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QuestionEditor from '../questioneditor/components/QuestionEditor';
 import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
 import { MarkdownData, BaseQuestion } from '@/app/components/Interfaces';
+import { parseMarkdownContent } from './../../utils/markdownUtils';
+import { Folder } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
+
+interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  webkitdirectory?: string;
+  directory?: string;
+}
 
 export interface Answer {
   id: string;
@@ -52,6 +60,7 @@ const Dashboard = () => {
   const [initialData, setInitialData] = useState<Question | undefined>(undefined);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
   const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedQuestions = localStorage.getItem('questions');
@@ -72,6 +81,41 @@ const Dashboard = () => {
       setMarkdowns(JSON.parse(savedMarkdowns));
     }
   }, []);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newQuestions: DashboardQuestion[] = [];
+    
+    for (const file of files) {
+      if (file.name.endsWith('.md')) {
+        const content = await file.text();
+        const parsedData = parseMarkdownContent(content);
+        const fileTitle = file.name.replace(/\.[^/.]+$/, '')
+          .split(/[-_\s]/)
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+
+        const newQuestion: DashboardQuestion = {
+          id: uuidv4(),
+          title: fileTitle,
+          question: parsedData.question,
+          answers: parsedData.answers,
+          difficulty: parsedData.difficulty,
+          tags: parsedData.tags,
+          markdownContent: content,
+          isExpanded: false,
+          onEditMarkdown: () => {},
+          type: 'question'
+        };
+        
+        newQuestions.push(newQuestion);
+      }
+    }
+    
+    setQuestions(prevQuestions => [...prevQuestions, ...newQuestions]);
+  };
 
   const handleSaveMarkdown = (markdownData: MarkdownData) => {
     const updatedMarkdowns = [...markdowns];
@@ -153,7 +197,7 @@ const Dashboard = () => {
       question: question.question,
       answers: question.answers.map(a => ({
         ...a,
-        isCorrect: a.isCorrect || false  // Ensure isCorrect is always boolean
+        isCorrect: a.isCorrect || false
       })),
       title: question.title,
       difficulty: question.difficulty,
@@ -175,6 +219,21 @@ const Dashboard = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl text-center font-bold">Question Editor</h1>
         <div className="flex gap-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            multiple
+            {...({ webkitdirectory: "", directory: "" } as FileInputProps)}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
+          >
+            <Folder size={16} />
+            Import Questions
+          </button>
           <button
             onClick={handleNewQuestion}
             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"

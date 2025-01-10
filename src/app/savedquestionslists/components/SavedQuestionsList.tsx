@@ -1,423 +1,353 @@
-"use client"
-import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
-
-import { BaseQuestion, MarkdownData, MarkdownEditData } from '../../components/Interfaces';
-import {
-  MarkdownFile,
-  generateMarkdown,
-  getMarkdownFromLocalStorage,
-  addNewMarkdownFile,
-  deleteMarkdownFile,
-  toggleMarkdownExpand,
-  updateMarkdownFile
-} from '../../../utils/markdownUtils';
-import { DashboardQuestion } from '@/app/components/Dashboard';
-
+import React, { Dispatch, SetStateAction, useState } from 'react';
+import { BaseQuestion, DashboardQuestion, MarkdownEditData, MarkdownData } from '@/app/components/Interfaces';
+import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
+import { Trash2, Download, CheckSquare, Square } from 'lucide-react';
 
 interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
   onEdit: (question: BaseQuestion | DashboardQuestion) => void;
-  onEditMarkdown: (markdown: MarkdownEditData) => void;
   setQuestions: Dispatch<SetStateAction<DashboardQuestion[]>>;
+  onEditMarkdown: (markdown: MarkdownEditData) => void;
   markdowns: MarkdownData[];
-  setMarkdowns: Dispatch<SetStateAction<MarkdownData[]>>;
-}
+  setMarkdowns: React.Dispatch<React.SetStateAction<MarkdownData[]>>;
 
+}
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({ 
   questions, 
   onEdit, 
   setQuestions,
 }) => {
-  const [viewMode, setViewMode] = useState<'questions' | 'markdown'>('questions');
-  const [markdownFiles, setMarkdownFiles] = useState<MarkdownFile[]>([]);
-  const [editingMarkdown, setEditingMarkdown] = useState<BaseQuestion | null>(null);
-  
-  useEffect(() => {
-    const storedFiles = getMarkdownFromLocalStorage();
-    setMarkdownFiles(storedFiles);
-  }, [viewMode]);
-
-  useEffect(() => {
-    const normalizedQuestions = questions.map((question) => ({
-      ...question,
-      id: question.id || String(Date.now() + Math.random()),
-      title: question.title || "Untitled Question",
-      question: question.question || "",
-      answers: question.answers || [
-        { id: String(Date.now() + 1), text: "", isCorrect: false },
-        { id: String(Date.now() + 2), text: "", isCorrect: false },
-        { id: String(Date.now() + 3), text: "", isCorrect: false },
-        { id: String(Date.now() + 4), text: "", isCorrect: false },
-      ],
-      difficulty: question.difficulty || 1,
-      tags: question.tags || [],
-    }));
-  
-    if (JSON.stringify(questions) !== JSON.stringify(normalizedQuestions)) {
-      setQuestions(normalizedQuestions);
-    }
-  }, [questions.length]);
-  
-
-  const handleEditClick = (question: DashboardQuestion) => {
-    console.log("Editing Question:", question);
-    onEdit(question);
-  };
-  
-  
+  const [editingMarkdown, setEditingMarkdown] = useState<{id: string, content: string} | null>(null);
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
   const handleDelete = (id: string) => {
-    if (viewMode === 'questions') {
-      if (window.confirm('Are you sure you want to delete this question?')) {
-        setQuestions(prevQuestions => 
-          prevQuestions.filter(q => String(q.id) !== String(id))
-        );
-      }
-    } else {
-      if (window.confirm('Are you sure you want to delete this markdown file?')) {
-        const updatedFiles = deleteMarkdownFile(markdownFiles, id);
-        setMarkdownFiles(updatedFiles);
-      }
+    if (window.confirm('Are you sure you want to delete this question?')) {
+      setQuestions(prevQuestions => 
+        prevQuestions.filter(q => String(q.id) !== String(id))
+      );
+      setSelectedQuestions(prev => prev.filter(qId => qId !== id));
+    }
+  };
+
+  const handleDeleteAll = () => {
+    if (window.confirm('Are you sure you want to delete all questions? This action cannot be undone.')) {
+      setQuestions([]);
+      setSelectedQuestions([]);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedQuestions.length === 0) {
+      alert('Please select questions to delete');
+      return;
+    }
+    
+    if (window.confirm(`Are you sure you want to delete ${selectedQuestions.length} selected question(s)? This action cannot be undone.`)) {
+      setQuestions(prevQuestions => 
+        prevQuestions.filter(q => !selectedQuestions.includes(String(q.id)))
+      );
+      setSelectedQuestions([]);
     }
   };
 
   const toggleExpand = (id: string) => {
-    if (viewMode === 'questions') {
-      setQuestions(questions.map(q =>
-        q.id === String(id) ? { ...q, isExpanded: !q.isExpanded } : q
-      ));
-    } else {
-      const updatedFiles = toggleMarkdownExpand(markdownFiles, (id));
-      setMarkdownFiles(updatedFiles);
+    setQuestions(questions.map(q =>
+      q.id === String(id) ? { ...q, isExpanded: !q.isExpanded } : q
+    ));
+  };
+
+  const handleEditMarkdown = (question: DashboardQuestion) => {
+    const markdownContent = generateMarkdown(question);
+    setEditingMarkdown({
+      id: question.id,
+      content: markdownContent
+    });
+  };
+
+  const saveMarkdownChanges = () => {
+    if (editingMarkdown) {
+      try {
+        const parsedData = parseMarkdownContent(editingMarkdown.content);
+        const updatedQuestions = questions.map(q =>
+          q.id === editingMarkdown.id
+            ? {
+                ...q,
+                markdownContent: editingMarkdown.content,
+                question: parsedData.question,
+                answers: parsedData.answers,
+                difficulty: parsedData.difficulty,
+                tags: parsedData.tags,
+              }
+            : q
+        );
+        setQuestions(updatedQuestions);
+        setEditingMarkdown(null);
+      } catch (error) {
+        console.error('Error parsing markdown content:', error);
+        alert('Error parsing markdown content. Please check the format and try again.');
+      }
+      
     }
   };
 
-  const saveAsMarkdown = async (question: BaseQuestion) => {
-    const content = generateMarkdown(question);
-    const updatedFiles = addNewMarkdownFile(markdownFiles, content, question.title);
-    setMarkdownFiles(updatedFiles);
-    alert('Markdown file saved successfully!');
-    
-    const storedFiles = getMarkdownFromLocalStorage();
-    setMarkdownFiles(storedFiles);
-  };
-
-
-  const handleEditMarkdown = (file: MarkdownFile) => {
-    const markdownQuestion: BaseQuestion = {
-      id: String(file.id),
-      title: file.title,
-      question: file.content,
-      difficulty: 1,
-      tags: [],
-      answers: [],
-      isExpanded: false
-    };
-    setEditingMarkdown(markdownQuestion);
-    setViewMode('markdown');
-  };
-  
-
-  const downloadFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownload = (id: number) => {
-    if (viewMode === 'questions') {
-      const question = questions.find(q => q.id === String(id));
-      if (!question) return;
+  const downloadQuestion = (question: DashboardQuestion) => {
+    try {
       const content = generateMarkdown(question);
       const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-      downloadFile(content, filename);
-    } else {
-      const markdownFile = markdownFiles.find(m => m.id === id);
-      if (!markdownFile) return;
-      const filename = `${markdownFile.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-      downloadFile(markdownFile.content, filename);
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading question:', error);
+      alert('Failed to download question. Please try again.');
     }
+  };
+
+  const downloadSelected = () => {
+    if (selectedQuestions.length === 0) {
+      alert('Please select questions to download');
+      return;
+    }
+    questions
+      .filter(q => selectedQuestions.includes(String(q.id)))
+      .forEach(question => {
+        downloadQuestion(question);
+      });
   };
 
   const downloadAll = () => {
-    if (viewMode === 'questions') {
-      questions.forEach(question => {
-        const content = generateMarkdown(question);
-        const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-        downloadFile(content, filename);
-      });
+    if (questions.length === 0) {
+      alert('No questions to download');
+      return;
+    }
+    questions.forEach(question => downloadQuestion(question));
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedQuestions(prev => 
+      prev.includes(id) 
+        ? prev.filter(qId => qId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedQuestions.length === questions.length) {
+      setSelectedQuestions([]);
     } else {
-      markdownFiles.forEach(file => {
-        const filename = `${file.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-        downloadFile(file.content, filename);
-      });
+      setSelectedQuestions(questions.map(q => String(q.id)));
     }
   };
-
-  const renderQuestions = () => (
-    <div className="space-y-4">
-      {questions.length === 0 ? (
-        <p className="text-center text-gray-500 italic">No questions created yet. Create New Question to get started.</p>
-      ) : (
-        questions.map((question, index) => (
-          <div
-            key={question.id || `question-${index}`}
-            className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div
-              className="cursor-pointer"
-              onClick={() => toggleExpand(String(question.id))} 
-            >
-              <div className="flex flex-col space-y-2">
-                <h3 className="text-lg font-semibold">{question.title}</h3>
-                <div className="text-sm text-gray-600">
-                  Difficulty: {question.difficulty}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {question.tags.map((tag, index) => (
-                    <span
-                      key={`tag-${question.id}-${index}`}
-                      className="px-2 py-1 text-xs bg-blue-100 rounded"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex justify-end space-x-2 mt-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditClick(question);
-                    }}
-                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (question.id) {
-                        handleDelete(String(question.id));
-                      }
-                    }}
-                    className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      saveAsMarkdown(question);
-                    }}
-                    className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600"
-                  >
-                    Save as MD
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(Number(question.id));
-                    }}
-                    className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-                  >
-                    Download
-                  </button>
-                </div>
-              </div>
-            </div>
-  
-            {question.isExpanded && (
-              <div className="mt-4 space-y-2 border-t pt-4">
-                <div className="space-y-4">
-                  <div>
-                    <p className="font-medium ">Question:</p>
-                    <p className="ml-4 mt-1 whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-4 rounded max-w-full overflow-x-auto">{question.question}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Answers:</p>
-                    <ul className="ml-8 list-disc space-y-1 mt-1">
-                      {question.answers.map((answer, index) => (
-                        <li 
-                          key={`answer-${question.id}-${index}`}
-                          className={answer.isCorrect ? 'text-green-600 font-medium' : ''}
-                        >
-                          {answer.text}
-                          {answer.isCorrect && ' (Correct)'}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))
-      )}
-    </div>
-  );
-  
-  const saveMarkdownChanges = (updatedQuestion: BaseQuestion) => {
-    if (editingMarkdown) {
-      const content = updatedQuestion.question;
-      const updatedFiles = updateMarkdownFile(markdownFiles, String(editingMarkdown.id), content);
-      setMarkdownFiles(updatedFiles);
-      setEditingMarkdown(null);
-      alert('Changes saved successfully');
-      const storedFiles = getMarkdownFromLocalStorage();
-      setMarkdownFiles(storedFiles);
-    }
-  };
-
-  const renderMarkdownFiles = () => (
-    <div className="space-y-4">
-      {markdownFiles.length === 0 ? (
-        <p className="text-center text-gray-500 italic">No markdown files saved yet.</p>
-      ) : (
-        markdownFiles.map((file, index) => (
-          <div
-            key={file.id ||`file-${index}`}
-            className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div
-              className="cursor-pointer"
-              onClick={() => toggleExpand(file.id.toString())}
-            >
-              <div className="flex flex-col space-y-2">
-                <h3 className="text-lg font-semibold">{file.title}</h3>
-                <div className="flex justify-end space-x-2 mt-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditMarkdown(file);
-                    }}
-                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                     handleDelete(file.id.toString());
-
-
-                    }}
-                    className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(file.id);
-                    }}
-                    className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-                  >
-                    Download
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {file.isExpanded && (
-              <div className="mt-4 space-y-2 border-t pt-4">
-               <pre className="whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-4 rounded max-w-full overflow-x-auto">
-                {file.content}
-              </pre>
-              </div>
-            )}
-          </div>
-        ))
-      )}
-        {editingMarkdown && viewMode === 'markdown' && (
-        <div className="max-w-2xl mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
-          <h3 className="text-2xl font-bold text-gray-700 mb-6">Edit Question: {editingMarkdown.title}</h3>
-          
-          <div className="space-y-6">
-            <label htmlFor="questionContent" className="block text-lg font-semibold text-gray-600">
-              Question Content
-            </label>
-            
-            <textarea
-              id="questionContent"
-              value={editingMarkdown.question}
-              onChange={(e) => {
-                setEditingMarkdown({
-                  ...editingMarkdown,
-                  question: e.target.value,
-                });
-              }}
-              className="w-full h-48 p-4 text-base border border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Edit the content of the question here..."
-            />
-            
-            <div className="flex justify-between space-x-4">
-              <button
-                onClick={() => saveMarkdownChanges(editingMarkdown)}
-                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Save Changes
-              </button>
-              
-              <button
-                onClick={() => setViewMode('questions')}
-                className="px-6 py-2 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-    </div>
-  );
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-4">
-          
-          <div className="space-x-2">
+        <div className="flex gap-2">
+          {questions.length > 0 && (
             <button
-              onClick={() => setViewMode('questions')}
-              className={`px-4 py-2 rounded ${
-                viewMode === 'questions'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 text-gray-700'
-              }`}
+              onClick={toggleSelectAll}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 flex items-center gap-2"
             >
-              Questions 
+              {selectedQuestions.length === questions.length ? (
+                <CheckSquare size={16} />
+              ) : (
+                <Square size={16} />
+              )}
+              {selectedQuestions.length === questions.length ? 'Deselect All' : 'Select All'}
+            </button>
+          )}
+          {selectedQuestions.length > 0 && (
+            <>
+              <button
+                onClick={handleDeleteSelected}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                Delete Selected ({selectedQuestions.length})
+              </button>
+              <button
+                onClick={downloadSelected}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
+              >
+                <Download size={16} />
+                Download Selected ({selectedQuestions.length})
+              </button>
+            </>
+          )}
+        </div>
+        {questions.length > 0 && (
+          <div className="flex gap-2">
+            <button
+              onClick={downloadAll}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-2"
+            >
+              <Download size={16} />
+              Download All
             </button>
             <button
-              onClick={() => setViewMode('markdown')}
-              className={`px-4 py-2 rounded ${
-                viewMode === 'markdown'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 text-gray-700'
-              }`}
+              onClick={handleDeleteAll}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
             >
-              Markdown 
+              <Trash2 size={16} />
+              Delete All
             </button>
           </div>
-        </div>
-        {(viewMode === 'questions' ? questions.length > 0 : markdownFiles.length > 0) && (
-          <button
-            onClick={downloadAll}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            Download All
-          </button>
         )}
       </div>
-      {viewMode === 'questions' ? renderQuestions() : renderMarkdownFiles()}
+
+      {questions.length === 0 ? (
+        <p className="text-center text-gray-500 italic">No questions created yet. Create New Question to get started.</p>
+      ) : (
+        <div className="space-y-4">
+          {questions.map((question) => (
+            <div
+              key={question.id}
+              className={`border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow ${
+                selectedQuestions.includes(String(question.id)) ? 'border-blue-500' : ''
+              }`}
+            >
+              {editingMarkdown?.id === question.id ? (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Editing: {question.title}</h3>
+                  <textarea
+                    value={editingMarkdown.content}
+                    onChange={(e) => setEditingMarkdown({
+                      ...editingMarkdown,
+                      content: e.target.value
+                    })}
+                    className="w-full h-64 p-4 font-mono text-sm bg-gray-50 rounded border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      onClick={() => setEditingMarkdown(null)}
+                      className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveMarkdownChanges}
+                      className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-4">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelect(String(question.id));
+                    }}
+                    className="mt-1 text-gray-500 hover:text-blue-500 transition-colors"
+                  >
+                    {selectedQuestions.includes(String(question.id)) ? (
+                      <CheckSquare className="w-5 h-5" />
+                    ) : (
+                      <Square className="w-5 h-5" />
+                    )}
+                  </button>
+                  <div className="flex-grow">
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => toggleExpand(String(question.id))}
+                    >
+                      <div className="flex flex-col space-y-2">
+                        <h3 className="text-lg font-semibold">{question.title}</h3>
+                        <div className="text-sm text-gray-600">
+                          Difficulty: {question.difficulty}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {question.tags.map((tag, index) => (
+                            <span
+                              key={`tag-${question.id}-${index}`}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex justify-end space-x-2 mt-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(question);
+                            }}
+                            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditMarkdown(question);
+                            }}
+                            className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                          >
+                            Edit as MD
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(String(question.id));
+                            }}
+                            className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadQuestion(question);
+                            }}
+                            className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {question.isExpanded && (
+                      <div className="mt-4 space-y-2 border-t pt-4">
+                        <div className="space-y-4">
+                          <div>
+                            <p className="font-medium">Question:</p>
+                            <p className="ml-4 mt-1 whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-4 rounded max-w-full overflow-x-auto">
+                              {question.question}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-medium">Answers:</p>
+                            <ul className="ml-8 list-disc space-y-1 mt-1">
+                              {question.answers.map((answer, index) => (
+                                <li 
+                                  key={`answer-${question.id}-${index}`}
+                                  className={answer.isCorrect ? 'text-green-600 font-medium' : ''}
+                                >
+                                  {answer.text}
+                                  {answer.isCorrect && ' (Correct)'}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
