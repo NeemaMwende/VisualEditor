@@ -128,7 +128,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         if (parsedData) {
           setQuestion(parsedData.question.trim());
           if (parsedData.answers.length > 0) {
-            // Preserve existing answer IDs while updating content
             const updatedAnswers = answers.map((existingAnswer, index) => ({
               id: existingAnswer.id,
               text: parsedData.answers[index]?.text || '',

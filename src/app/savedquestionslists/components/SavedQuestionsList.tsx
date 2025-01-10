@@ -45,8 +45,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const saveMarkdownChanges = () => {
     if (editingMarkdown) {
-      // Here you would parse the markdown back to a question format
-      // For now, we'll just update the raw markdown content
       const updatedQuestions = questions.map(q => 
         q.id === editingMarkdown.id 
           ? { ...q, markdownContent: editingMarkdown.content }
