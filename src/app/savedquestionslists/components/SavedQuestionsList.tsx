@@ -80,8 +80,10 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         setQuestions(updatedQuestions);
         setEditingMarkdown(null);
       } catch (error) {
-        alert('Error parsing markdown content. Please check the format and try again.', error);
+        console.error('Error parsing markdown content:', error);
+        alert('Error parsing markdown content. Please check the format and try again.');
       }
+      
     }
   };
 

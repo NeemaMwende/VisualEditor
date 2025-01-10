@@ -54,7 +54,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [markdownContent, setMarkdownContent] = useState('');
   const [selectedFiles] = useState<FileData[]>([]);
-  const [currentFile, setCurrentFile] = useState<FileData | null>(null);
+  const [currentFile] = useState<FileData | null>(null);
   const [title, setTitle] = useState(initialData?.title || '');
 
   const randomizeAnswers = () => {
