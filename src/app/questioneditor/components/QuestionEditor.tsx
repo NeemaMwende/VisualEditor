@@ -144,24 +144,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   }, [markdownContent, showMarkdown]);
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-
-    const fileList: FileData[] = [];
-    for (const file of files) {
-      if (file.name.endsWith('.md')) {
-        const content = await file.text();
-        fileList.push({
-          name: file.name,
-          content,
-          path: file.webkitRelativePath || file.name
-        });
-      }
-    }
-    setSelectedFiles(fileList);
-    setShowFileList(true);
-  };
 
   const handleFileClick = (file: FileData) => {
     setCurrentFile(file);
