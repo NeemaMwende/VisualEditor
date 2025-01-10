@@ -1,10 +1,7 @@
 "use client"
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle, } from 'lucide-react';
-import {
-  generateMarkdown,
-  parseMarkdownContent,
-} from '../../../utils/markdownUtils';
+import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
+import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { EditorQuestion, MarkdownData } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
@@ -13,7 +10,7 @@ interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
   onEditQuestion?: (data: EditorQuestion) => void;
-  initialData?: EditorQuestion | Question; 
+  initialData?: EditorQuestion | Question;
   isEditing?: boolean;
   setIsEditing?: (value: boolean) => void;
   onSaveMarkdown?: (data: MarkdownData) => void;
@@ -42,8 +39,7 @@ interface FileData {
   path: string;
 }
 
-interface FileInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   webkitdirectory?: string;
   directory?: string;
 }
@@ -67,7 +63,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     { id: '2', text: '', isCorrect: false },
     { id: '3', text: '', isCorrect: false },
     { id: '4', text: '', isCorrect: false }
-  
   ]);
   const [difficulty, setDifficulty] = useState(1);
   const [tags, setTags] = useState<string[]>([]);
@@ -76,39 +71,34 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<FileData[]>([]);
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
   const [showFileList, setShowFileList] = useState(false);
+  const [title, setTitle] = useState(initialData?.title || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
-  const [title, setTitle] = useState(initialData?.title || '');
 
   const randomizeAnswers = () => {
     setAnswers(prevAnswers => {
       const shuffledAnswers = [...prevAnswers];
-      
-      // Fisher-Yates shuffle algorithm
       for (let i = shuffledAnswers.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
       }
-      
       return shuffledAnswers;
     });
   };
-  
-  const currentMarkdown = useMemo(() => {
-    return generateMarkdown({ 
-      id: String(initialData?.id || Date.now()), 
 
-      question, 
-      answers, 
-      difficulty, 
-      tags, 
-      title: initialData?.title || currentFile?.name || '' 
+  const currentMarkdown = useMemo(() => {
+    return generateMarkdown({
+      id: String(initialData?.id || Date.now()),
+      question,
+      answers,
+      difficulty,
+      tags,
+      title: title || currentFile?.name || ''
     });
-  }, [question, answers, difficulty, tags, initialData?.title, currentFile?.name, initialData?.id]);
+  }, [question, answers, difficulty, tags, title, currentFile?.name, initialData?.id]);
 
   useEffect(() => {
     if (isEditing && initialData) {
-      console.log("Initial Data for Editing:", initialData);
       setQuestion(initialData.question || '');
       setAnswers(
         (initialData.answers || []).map((answer) => ({
@@ -118,11 +108,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         }))
       );
       setDifficulty(initialData.difficulty || 1);
-      setTitle(initialData.title || ''); 
+      setTitle(initialData.title || '');
       if (initialData.tags) {
         setTags(initialData.tags);
-        setMarkdownContent(initialData.markdownContent || '');
       }
+      setMarkdownContent(initialData.markdownContent || '');
     }
   }, [initialData, isEditing]);
 
@@ -130,12 +120,36 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setMarkdownContent(currentMarkdown);
   }, [currentMarkdown]);
 
+  // New effect to sync markdown changes with question state
+  useEffect(() => {
+    if (showMarkdown) {
+      try {
+        const parsedData = parseMarkdownContent(markdownContent);
+        if (parsedData) {
+          setQuestion(parsedData.question.trim());
+          if (parsedData.answers.length > 0) {
+            // Preserve existing answer IDs while updating content
+            const updatedAnswers = answers.map((existingAnswer, index) => ({
+              id: existingAnswer.id,
+              text: parsedData.answers[index]?.text || '',
+              isCorrect: parsedData.answers[index]?.isCorrect || false
+            }));
+            setAnswers(updatedAnswers);
+          }
+          setDifficulty(parsedData.difficulty);
+          setTags(parsedData.tags);
+        }
+      } catch (error) {
+        console.error('Error parsing markdown:', error);
+      }
+    }
+  }, [markdownContent, showMarkdown]);
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
     const fileList: FileData[] = [];
-    
     for (const file of files) {
       if (file.name.endsWith('.md')) {
         const content = await file.text();
@@ -146,8 +160,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         });
       }
     }
-    
-
     setSelectedFiles(fileList);
     setShowFileList(true);
   };
@@ -156,12 +168,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setCurrentFile(file);
     const parsedData = parseMarkdownContent(file.content);
     const fileTitle = file.name.replace(/\.[^/.]+$/, '')
-    .split(/[-_\s]/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-  
+      .split(/[-_\s]/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+
     setTitle(fileTitle);
-    
     setQuestion(parsedData.question);
     setAnswers(parsedData.answers);
     setDifficulty(parsedData.difficulty);
@@ -170,11 +181,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setShowMarkdown(true);
   };
 
-  useEffect(() => {
-    const savedMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
-    setMarkdowns(savedMarkdowns);
-  }, []);
-
+  const handleMarkdownUpdate = (newContent: string) => {
+    setMarkdownContent(newContent);
+    const parsedData = parseMarkdownContent(newContent);
+    if (parsedData) {
+      setQuestion(parsedData.question);
+      setAnswers(parsedData.answers);
+      setDifficulty(parsedData.difficulty);
+      setTags(parsedData.tags);
+    }
+  };
 
   const handleSaveMarkdown = async () => {
     try {
@@ -231,11 +247,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
 
       alert('Saved successfully!');
-      
+
       if (!isEditing) {
         resetEditor();
       }
-      
+
       onBack();
     } catch (error) {
       console.error('Error saving:', error);
@@ -243,7 +259,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
-  
   const resetEditor = () => {
     setQuestion('');
     setAnswers([
@@ -256,27 +271,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setTags([]);
     setMarkdownContent('');
   };
-
-
-  useEffect(() => {
-    if (markdowns.length > 0) {
-      localStorage.setItem('markdowns', JSON.stringify(markdowns));
-    }
-  }, [markdowns]);
-
-  const loadSavedMarkdowns = () => {
-    try {
-      const savedMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
-      return savedMarkdowns;
-    } catch (error) {
-      console.error('Error loading markdowns:', error);
-      return [];
-    }
-  };
-
-  useEffect(() => {
-    loadSavedMarkdowns();
-  }, []);
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -305,7 +299,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
     try {
       const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
-  
+
       if (isEditing) {
         const updatedQuestions = existingQuestions.map((q: Question) =>
           q.id === initialData?.id ? savedData : q
@@ -314,7 +308,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       } else {
         localStorage.setItem("questions", JSON.stringify([...existingQuestions, savedData]));
       }
-  
+
       alert("Saved successfully!");
       onSave(savedData);
     } catch (error) {
@@ -322,7 +316,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       alert("Failed to save. Please try again.");
     }
   };
-  
+
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
       const confirm = window.confirm('You have unsaved changes. Are you sure you want to go back?');
@@ -344,71 +338,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       </div>
 
       <div className="bg-white shadow-sm form-content p-6 rounded-lg space-y-6">
-        {/* File Selection Section */}
-        <div className="flex gap-4">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            multiple
-            {...({ webkitdirectory: "", directory: "" } as FileInputProps)}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 w-full text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center gap-2"
-          >
-            <Folder size={16} />
-            Select Folder
-          </button>
-          {selectedFiles.length > 0 && (
-            <button
-              onClick={() => setShowFileList(!showFileList)}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 flex items-center gap-2"
-            >
-              {showFileList ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-              {selectedFiles.length} Files
-            </button>
-          )}
-        </div>
-
-        {/* File List Section */}
-        {showFileList && selectedFiles.length > 0 && (
-          <div className="border rounded-md overflow-hidden">
-            <div className="bg-gray-50 p-2 font-medium text-gray-700">
-              Available Files
-            </div>
-            <div className="max-h-60 overflow-y-auto">
-              {selectedFiles.map((file, index) => (
-                <div
-                  key={index}
-                  className={`border-t ${currentFile?.name === file.name ? 'bg-blue-50' : ''}`}
-                >
-                  <div
-                    onClick={() => handleFileClick(file)}
-                    className="p-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50"
-                  >
-                    <FileText size={16} />
-                    <span className="text-sm">{file.path}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {showMarkdown ? (
           <div className="space-y-4">
             <label className="block text-gray-700 text-sm font-bold">
               Markdown Content
             </label>
-            <pre className="w-full p-4 bg-gray-50 rounded-md font-mono text-sm whitespace-pre-wrap break-words">
-              {markdownContent}
-            </pre>
+            <textarea
+              value={markdownContent}
+              onChange={(e) => handleMarkdownUpdate(e.target.value)}
+              className="w-full p-4 bg-gray-50 rounded-md font-mono text-sm"
+              rows={20}
+            />
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Title Section */}
             <div className="space-y-2">
               <label className="block text-gray-700 text-sm font-bold">
                 Title
@@ -423,7 +366,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               />
             </div>
 
-            {/* Difficulty Section */}
             <div className="space-y-2">
               <label className="block text-gray-700 text-sm font-bold">
                 Difficulty Level
@@ -438,14 +380,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   <option value={2}>Intermediate (Level 2)</option>
                   <option value={3}>Advanced (Level 3)</option>
                 </select>
-                <ChevronDown 
-                  size={20} 
+                <ChevronDown
+                  size={20}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"
                 />
               </div>
             </div>
 
-            {/* Tags Section */}
             <div className="space-y-2">
               <label className="block text-gray-700 text-sm font-bold">
                 Tags
@@ -457,7 +398,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               />
             </div>
 
-            {/* Question Section */}
             <div className="space-y-2">
               <label className="block text-gray-700 text-sm font-bold">
                 Question
@@ -471,7 +411,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               />
             </div>
 
-            {/* Answers Section */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <label className="block text-gray-700 text-sm font-bold">
@@ -537,14 +476,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           >
             {showMarkdown ? 'Edit Question' : 'View Markdown'}
           </button>
-          {showMarkdown && (
-            <button
-              onClick={handleSaveMarkdown}
-              className="px-4 py-2 text-white bg-green-500 rounded-md hover:bg-green-600"
-            >
-              Save as Markdown
-            </button>
-          )}
           <button
             onClick={handleSave}
             className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
