@@ -1,7 +1,7 @@
 "use client"
 import React, { Dispatch, SetStateAction, useState } from 'react';
 import { BaseQuestion, DashboardQuestion } from '@/app/components/Interfaces';
-import { generateMarkdown } from '../../../utils/markdownUtils';
+import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 
 interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
@@ -45,15 +45,26 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const saveMarkdownChanges = () => {
     if (editingMarkdown) {
-      const updatedQuestions = questions.map(q => 
-        q.id === editingMarkdown.id 
-          ? { ...q, markdownContent: editingMarkdown.content }
+      const parsedData = parseMarkdownContent(editingMarkdown.content);
+  
+      const updatedQuestions = questions.map(q =>
+        q.id === editingMarkdown.id
+          ? {
+              ...q,
+              markdownContent: editingMarkdown.content,
+              question: parsedData.question,
+              answers: parsedData.answers,
+              difficulty: parsedData.difficulty,
+              tags: parsedData.tags,
+            }
           : q
       );
+  
       setQuestions(updatedQuestions);
       setEditingMarkdown(null);
     }
   };
+  
 
   const downloadQuestion = (question: DashboardQuestion) => {
     const content = generateMarkdown(question);

@@ -39,10 +39,10 @@ interface FileData {
   path: string;
 }
 
-interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  webkitdirectory?: string;
-  directory?: string;
-}
+// interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+//   webkitdirectory?: string;
+//   directory?: string;
+// }
 
 interface MarkdownFile {
   id: string;
@@ -72,8 +72,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile, setCurrentFile] = useState<FileData | null>(null);
   const [showFileList, setShowFileList] = useState(false);
   const [title, setTitle] = useState(initialData?.title || '');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
+  //const fileInputRef = useRef<HTMLInputElement>(null);
+  //const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
 
   const randomizeAnswers = () => {
     setAnswers(prevAnswers => {
@@ -191,72 +191,72 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
-  const handleSaveMarkdown = async () => {
-    try {
-      if (!currentMarkdown?.trim()) {
-        alert('Cannot save empty markdown content');
-        return;
-      }
+  // const handleSaveMarkdown = async () => {
+  //   try {
+  //     if (!currentMarkdown?.trim()) {
+  //       alert('Cannot save empty markdown content');
+  //       return;
+  //     }
 
-      if (!title.trim() && currentFile?.name) {
-        const fileTitle = currentFile.name.replace(/\.[^/.]+$/, '')
-          .split(/[-_\s]/)
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-        setTitle(fileTitle);
-      }
+  //     if (!title.trim() && currentFile?.name) {
+  //       const fileTitle = currentFile.name.replace(/\.[^/.]+$/, '')
+  //         .split(/[-_\s]/)
+  //         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+  //         .join(' ');
+  //       setTitle(fileTitle);
+  //     }
 
-      if (!title.trim()) {
-        alert('Please provide a title');
-        return;
-      }
+  //     if (!title.trim()) {
+  //       alert('Please provide a title');
+  //       return;
+  //     }
 
-      const newMarkdownFile: MarkdownFile = {
-        id: uuidv4(),
-        title,
-        content: currentMarkdown,
-        isExpanded: false
-      };
+  //     const newMarkdownFile: MarkdownFile = {
+  //       id: uuidv4(),
+  //       title,
+  //       content: currentMarkdown,
+  //       isExpanded: false
+  //     };
 
-      const existingFiles: MarkdownFile[] = JSON.parse(localStorage.getItem('markdownFiles') || '[]');
-      const existingIndex = existingFiles.findIndex(f => f.title === title);
-      let updatedFiles;
+  //     const existingFiles: MarkdownFile[] = JSON.parse(localStorage.getItem('markdownFiles') || '[]');
+  //     const existingIndex = existingFiles.findIndex(f => f.title === title);
+  //     let updatedFiles;
 
-      if (existingIndex !== -1) {
-        updatedFiles = existingFiles.map((f, index) =>
-          index === existingIndex ? { ...newMarkdownFile, id: f.id } : f
-        );
-      } else {
-        updatedFiles = [...existingFiles, newMarkdownFile];
-      }
+  //     if (existingIndex !== -1) {
+  //       updatedFiles = existingFiles.map((f, index) =>
+  //         index === existingIndex ? { ...newMarkdownFile, id: f.id } : f
+  //       );
+  //     } else {
+  //       updatedFiles = [...existingFiles, newMarkdownFile];
+  //     }
 
-      localStorage.setItem('markdownFiles', JSON.stringify(updatedFiles));
+  //     localStorage.setItem('markdownFiles', JSON.stringify(updatedFiles));
 
-      const newMarkdown: MarkdownData = {
-        id: newMarkdownFile.id,
-        title,
-        content: currentMarkdown,
-        createdAt: new Date().toISOString(),
-        type: 'markdown',
-        isVisible: true,
-        isExpanded: false
-      };
+  //     const newMarkdown: MarkdownData = {
+  //       id: newMarkdownFile.id,
+  //       title,
+  //       content: currentMarkdown,
+  //       createdAt: new Date().toISOString(),
+  //       type: 'markdown',
+  //       isVisible: true,
+  //       isExpanded: false
+  //     };
 
-      const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
-      localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
+  //     const existingMarkdowns = JSON.parse(localStorage.getItem('markdowns') || '[]');
+  //     localStorage.setItem('markdowns', JSON.stringify([...existingMarkdowns, newMarkdown]));
 
-      alert('Saved successfully!');
+  //     alert('Saved successfully!');
 
-      if (!isEditing) {
-        resetEditor();
-      }
+  //     if (!isEditing) {
+  //       resetEditor();
+  //     }
 
-      onBack();
-    } catch (error) {
-      console.error('Error saving:', error);
-      alert('Failed to save. Please try again.');
-    }
-  };
+  //     onBack();
+  //   } catch (error) {
+  //     console.error('Error saving:', error);
+  //     alert('Failed to save. Please try again.');
+  //   }
+  // };
 
   const resetEditor = () => {
     setQuestion('');
@@ -285,6 +285,15 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       }
     }
 
+    const updatedMarkdown = generateMarkdown({
+      id: initialData?.id || uuidv4(),
+      question,
+      answers,
+      difficulty,
+      tags,
+      title,
+    });
+  
     const savedData: Question = {
       id: initialData?.id || uuidv4(),
       question,
@@ -293,21 +302,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       tags,
       title,
       type: 'question',
-      markdownContent: currentMarkdown
+      markdownContent: updatedMarkdown,
     };
-
+  
     try {
       const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
-
-      if (isEditing) {
-        const updatedQuestions = existingQuestions.map((q: Question) =>
-          q.id === initialData?.id ? savedData : q
-        );
-        localStorage.setItem("questions", JSON.stringify(updatedQuestions));
-      } else {
-        localStorage.setItem("questions", JSON.stringify([...existingQuestions, savedData]));
-      }
-
+  
+      const updatedQuestions = isEditing
+        ? existingQuestions.map((q: Question) =>
+            q.id === initialData?.id ? savedData : q
+          )
+        : [...existingQuestions, savedData];
+  
+      localStorage.setItem("questions", JSON.stringify(updatedQuestions));
+  
       alert("Saved successfully!");
       onSave(savedData);
     } catch (error) {
@@ -315,6 +323,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       alert("Failed to save. Please try again.");
     }
   };
+  
 
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
