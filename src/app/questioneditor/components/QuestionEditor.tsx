@@ -1,6 +1,6 @@
 "use client"
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FileText, Folder, ChevronRight, ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { EditorQuestion, MarkdownData } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
