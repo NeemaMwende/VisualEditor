@@ -11,7 +11,7 @@ interface QuestionEditorProps {
   onBack: () => void;
   initialData?: EditorQuestion | Question;
   isEditing?: boolean;
-  onSaveMarkdown: (markdownData: MarkdownData) => void;
+  onSaveMarkdown?: (markdownData: MarkdownData) => void;
 }
 
 interface Answer {
