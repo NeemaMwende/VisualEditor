@@ -1,16 +1,17 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
-import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
+import { generateMarkdown, parseMarkdownContent, } from '../../../utils/markdownUtils';
 import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
-
+import { MarkdownData } from '@/app/components/Interfaces';
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
   initialData?: EditorQuestion | Question;
   isEditing?: boolean;
+  onSaveMarkdown: (markdownData: MarkdownData) => void;
 }
 
 interface Answer {

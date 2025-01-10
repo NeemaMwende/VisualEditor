@@ -1,5 +1,5 @@
 import React, { Dispatch, SetStateAction, useState } from 'react';
-import { BaseQuestion, DashboardQuestion } from '@/app/components/Interfaces';
+import { BaseQuestion, DashboardQuestion, MarkdownEditData, MarkdownData } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { Trash2, Download, CheckSquare, Square } from 'lucide-react';
 
@@ -7,6 +7,10 @@ interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
   onEdit: (question: BaseQuestion | DashboardQuestion) => void;
   setQuestions: Dispatch<SetStateAction<DashboardQuestion[]>>;
+  onEditMarkdown: (markdown: MarkdownEditData) => void;
+  markdowns: MarkdownData[];
+  setMarkdowns: React.Dispatch<React.SetStateAction<MarkdownData[]>>;
+
 }
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({ 
