@@ -30,12 +30,12 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     }
   };
 
-  const handleDeleteAll = () => {
-    if (window.confirm('Are you sure you want to delete all questions? This action cannot be undone.')) {
-      setQuestions([]);
-      setSelectedQuestions([]);
-    }
-  };
+  // const handleDeleteAll = () => {
+  //   if (window.confirm('Are you sure you want to delete all questions? This action cannot be undone.')) {
+  //     setQuestions([]);
+  //     setSelectedQuestions([]);
+  //   }
+  // };
 
   const handleDeleteSelected = () => {
     if (selectedQuestions.length === 0) {
@@ -122,13 +122,13 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       });
   };
 
-  const downloadAll = () => {
-    if (questions.length === 0) {
-      alert('No questions to download');
-      return;
-    }
-    questions.forEach(question => downloadQuestion(question));
-  };
+  // const downloadAll = () => {
+  //   if (questions.length === 0) {
+  //     alert('No questions to download');
+  //     return;
+  //   }
+  //   questions.forEach(question => downloadQuestion(question));
+  // };
 
   const toggleSelect = (id: string) => {
     setSelectedQuestions(prev => 
@@ -184,20 +184,20 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         </div>
         {questions.length > 0 && (
           <div className="flex gap-2">
-            <button
+            {/* <button
               onClick={downloadAll}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-2"
             >
               <Download size={16} />
               Download All
-            </button>
-            <button
+            </button> */}
+            {/* <button
               onClick={handleDeleteAll}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
             >
               <Trash2 size={16} />
               Delete All
-            </button>
+            </button> */}
           </div>
         )}
       </div>
