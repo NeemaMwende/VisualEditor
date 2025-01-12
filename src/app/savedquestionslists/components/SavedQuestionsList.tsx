@@ -120,12 +120,10 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   
     try {
       const parsedData = parseMarkdownContent(editingMarkdown.content) as ParsedMarkdownData;
+
       
-      if (!parsedData || typeof parsedData.title !== 'string') {
-        throw new Error('Invalid markdown format: Missing or invalid title');
-      }
-  
       const newFilename = `${parsedData.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+      
   
       if (newFilename !== editingMarkdown.filename) {
         try {
