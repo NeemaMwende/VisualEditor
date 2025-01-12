@@ -2,7 +2,7 @@ import React, { Dispatch, SetStateAction, useState } from 'react';
 import { BaseQuestion, DashboardQuestion, MarkdownEditData, MarkdownData } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { Trash2, Download, CheckSquare, Square } from 'lucide-react';
-
+import JSZip from 'jszip';
 interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
   onEdit: (question: BaseQuestion | DashboardQuestion) => void;
@@ -91,6 +91,35 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     }
   };
 
+  const downloadAsZip = async (questionsToDownload: DashboardQuestion[]) => {
+    try {
+      const zip = new JSZip();
+      
+      // Add each question as a markdown file to the zip
+      questionsToDownload.forEach(question => {
+        const content = generateMarkdown(question);
+        const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+        zip.file(filename, content);
+      });
+      
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'questions.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error creating zip file:', error);
+      alert('Failed to create zip file. Please try again.');
+    }
+  };
+
   const downloadQuestion = (question: DashboardQuestion) => {
     try {
       const content = generateMarkdown(question);
@@ -115,11 +144,12 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       alert('Please select questions to download');
       return;
     }
-    questions
-      .filter(q => selectedQuestions.includes(String(q.id)))
-      .forEach(question => {
-        downloadQuestion(question);
-      });
+    
+    const selectedQuestionData = questions.filter(q => 
+      selectedQuestions.includes(String(q.id))
+    );
+    
+    downloadAsZip(selectedQuestionData);
   };
 
   // const downloadAll = () => {

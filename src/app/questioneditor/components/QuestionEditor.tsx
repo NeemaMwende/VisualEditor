@@ -99,32 +99,42 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   }, [initialData, isEditing]);
 
-  useEffect(() => {
-    setMarkdownContent(currentMarkdown);
-  }, [currentMarkdown]);
 
   useEffect(() => {
     if (showMarkdown) {
+      setMarkdownContent(currentMarkdown);
+    }
+  }, [showMarkdown, currentMarkdown]);
+
+  useEffect(() => {
+    if (showMarkdown && markdownContent) {
       try {
         const parsedData = parseMarkdownContent(markdownContent);
         if (parsedData) {
-          setQuestion(parsedData.question.trim());
-          if (parsedData.answers.length > 0) {
-            const updatedAnswers = answers.map((existingAnswer, index) => ({
-              id: existingAnswer.id,
-              text: parsedData.answers[index]?.text || '',
-              isCorrect: parsedData.answers[index]?.isCorrect || false
-            }));
+          const updatedAnswers = answers.map((existingAnswer, index) => ({
+            id: existingAnswer.id,
+            text: parsedData.answers[index]?.text || '',
+            isCorrect: parsedData.answers[index]?.isCorrect || false
+          }));
+          
+          if (parsedData.question.trim() !== question.trim()) {
+            setQuestion(parsedData.question.trim());
+          }
+          if (JSON.stringify(updatedAnswers) !== JSON.stringify(answers)) {
             setAnswers(updatedAnswers);
           }
-          setDifficulty(parsedData.difficulty);
-          setTags(parsedData.tags);
+          if (parsedData.difficulty !== difficulty) {
+            setDifficulty(parsedData.difficulty);
+          }
+          if (JSON.stringify(parsedData.tags) !== JSON.stringify(tags)) {
+            setTags(parsedData.tags);
+          }
         }
       } catch (error) {
         console.error('Error parsing markdown:', error);
       }
     }
-  }, [markdownContent, showMarkdown, answers]);
+  }, [markdownContent, showMarkdown]);
 
   const handleMarkdownUpdate = (newContent: string) => {
     setMarkdownContent(newContent);
