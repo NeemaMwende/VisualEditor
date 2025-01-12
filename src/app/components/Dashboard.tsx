@@ -62,6 +62,7 @@ interface FileSystemState {
   path: string;
 }
 
+
 const Dashboard = () => {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
   const [currentlyEditing, setCurrentlyEditing] = useState<string | null>(null);
@@ -72,37 +73,43 @@ const Dashboard = () => {
   const [fileSystem, setFileSystem] = useState<FileSystemState>({ handle: null, path: '' });
 
   const loadDirectory = async () => {
+    if (!window.showDirectoryPicker) {
+      console.error('Directory picker is not supported in this environment');
+      return;
+    }
+  
     try {
-      const handle = await window.showDirectoryPicker({
-        mode: 'readwrite'
-      });
+      const handle = await window.showDirectoryPicker();
       setFileSystem({ handle, path: handle.name });
-      
+  
       const loadedQuestions: DashboardQuestion[] = [];
-      
+  
       for await (const entry of handle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-          const file = await entry.getFile();
-          const content = await file.text();
-          try {
-            const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
-            if (parsedData) {
-              loadedQuestions.push({
-                ...parsedData,
-                id: entry.name.replace('.md', ''),
-                markdownContent: content,
-                type: 'question',
-                isExpanded: false,
-                title: parsedData.title || entry.name.replace('.md', ''),
-                onEditMarkdown: () => {}
-              });
+         
+          if (entry instanceof FileSystemFileHandle) {
+            const file = await entry.getFile();
+            const content = await file.text();
+            try {
+              const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
+              if (parsedData) {
+                loadedQuestions.push({
+                  ...parsedData,
+                  id: entry.name.replace('.md', ''),
+                  markdownContent: content,
+                  type: 'question',
+                  isExpanded: false,
+                  title: parsedData.title || entry.name.replace('.md', ''),
+                  onEditMarkdown: () => {},
+                });
+              }
+            } catch (error) {
+              console.error(`Error parsing ${entry.name}:`, error);
             }
-          } catch (error) {
-            console.error(`Error parsing ${entry.name}:`, error);
           }
         }
       }
-      
+  
       setQuestions(loadedQuestions);
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
@@ -112,6 +119,7 @@ const Dashboard = () => {
       alert('Unable to access directory. Please check permissions and try again.');
     }
   };
+  
 
   const saveQuestionToFile = async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
