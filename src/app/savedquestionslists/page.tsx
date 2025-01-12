@@ -7,6 +7,10 @@ import { DashboardQuestion } from '@/app/components/Dashboard';
 export default function Home() {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
+  const [fsState] = useState({
+    handle: null,
+    path: '',
+  });
 
   const handleEdit = (question: BaseQuestion | DashboardQuestion) => {
    
@@ -27,6 +31,7 @@ export default function Home() {
         setQuestions={setQuestions}
         markdowns={markdowns}
         setMarkdowns={setMarkdowns}
+        fileSystem={fsState}
       />
     </main>
   );

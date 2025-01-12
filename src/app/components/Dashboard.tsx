@@ -1,15 +1,20 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import QuestionEditor from '../questioneditor/components/QuestionEditor';
 import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
-import { MarkdownData, BaseQuestion } from '@/app/components/Interfaces';
-import { parseMarkdownContent } from './../../utils/markdownUtils';
+import { MarkdownData } from '@/app/components/Interfaces';
+import { parseMarkdownContent, generateMarkdown } from './../../utils/markdownUtils';
 import { Folder } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  webkitdirectory?: string;
-  directory?: string;
+
+interface ParsedMarkdownData {
+  title: string;
+  question: string;
+  answers: { id: string; text: string; isCorrect: boolean; }[];
+  difficulty: number;
+  tags: string[];
+  markdownContent: string;
 }
 
 export interface Answer {
@@ -52,70 +57,94 @@ export interface DashboardQuestion extends Question {
   isExpanded?: boolean;
 }
 
+interface FileSystemState {
+  handle: FileSystemDirectoryHandle | null;
+  path: string;
+}
+
+
 const Dashboard = () => {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
   const [currentlyEditing, setCurrentlyEditing] = useState<string | null>(null);
-  const [nextId, setNextId] = useState(1);
   const [showEditor, setShowEditor] = useState(false);
   const [initialData, setInitialData] = useState<Question | undefined>(undefined);
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
   const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileSystem, setFileSystem] = useState<FileSystemState>({ handle: null, path: '' });
 
-  useEffect(() => {
-    const savedQuestions = localStorage.getItem('questions');
-    if (savedQuestions) {
-      const parsedQuestions: DashboardQuestion[] = JSON.parse(savedQuestions);
-      setQuestions(parsedQuestions);
-      setNextId(parsedQuestions.length ? Number(parsedQuestions[parsedQuestions.length - 1].id) + 1 : 1);
+  const loadDirectory = async () => {
+    if (!window.showDirectoryPicker) {
+      console.error('Directory picker is not supported in this environment');
+      return;
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('questions', JSON.stringify(questions));
-  }, [questions]);
-
-  useEffect(() => {
-    const savedMarkdowns = localStorage.getItem('markdowns');
-    if (savedMarkdowns) {
-      setMarkdowns(JSON.parse(savedMarkdowns));
-    }
-  }, []);
-
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-
-    const newQuestions: DashboardQuestion[] = [];
-    
-    for (const file of files) {
-      if (file.name.endsWith('.md')) {
-        const content = await file.text();
-        const parsedData = parseMarkdownContent(content);
-        const fileTitle = file.name.replace(/\.[^/.]+$/, '')
-          .split(/[-_\s]/)
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-
-        const newQuestion: DashboardQuestion = {
-          id: uuidv4(),
-          title: fileTitle,
-          question: parsedData.question,
-          answers: parsedData.answers,
-          difficulty: parsedData.difficulty,
-          tags: parsedData.tags,
-          markdownContent: content,
-          isExpanded: false,
-          onEditMarkdown: () => {},
-          type: 'question'
-        };
-        
-        newQuestions.push(newQuestion);
+  
+    try {
+      const handle = await window.showDirectoryPicker();
+      setFileSystem({ handle, path: handle.name });
+  
+      const loadedQuestions: DashboardQuestion[] = [];
+  
+      for await (const entry of handle.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+         
+          if (entry instanceof FileSystemFileHandle) {
+            const file = await entry.getFile();
+            const content = await file.text();
+            try {
+              const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
+              if (parsedData) {
+                loadedQuestions.push({
+                  ...parsedData,
+                  id: entry.name.replace('.md', ''),
+                  markdownContent: content,
+                  type: 'question',
+                  isExpanded: false,
+                  title: parsedData.title || entry.name.replace('.md', ''),
+                  onEditMarkdown: () => {},
+                });
+              }
+            } catch (error) {
+              console.error(`Error parsing ${entry.name}:`, error);
+            }
+          }
+        }
       }
+  
+      setQuestions(loadedQuestions);
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        return;
+      }
+      console.error('Error accessing directory:', error);
+      alert('Unable to access directory. Please check permissions and try again.');
     }
-    
-    setQuestions(prevQuestions => [...prevQuestions, ...newQuestions]);
   };
+  
+
+  const saveQuestionToFile = async (question: DashboardQuestion) => {
+    if (!fileSystem.handle) return;
+
+    try {
+      const content = generateMarkdown(question);
+      const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+      
+      const fileHandle = await fileSystem.handle.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+    } catch (error) {
+      console.error('Error saving file:', error);
+      alert('Failed to save file. Please check permissions and try again.');
+    }
+  };
+
+  useEffect(() => {
+    if (fileSystem.handle && questions.length > 0) {
+      questions.forEach(question => {
+        saveQuestionToFile(question);
+      });
+    }
+  }, [questions, fileSystem.handle]);
 
   const handleSaveMarkdown = (markdownData: MarkdownData) => {
     const updatedMarkdowns = [...markdowns];
@@ -128,7 +157,6 @@ const Dashboard = () => {
     }
     
     setMarkdowns(updatedMarkdowns);
-    localStorage.setItem('markdowns', JSON.stringify(updatedMarkdowns));
   };
 
   const handleEditMarkdown = (markdown: MarkdownEditData) => {
@@ -154,61 +182,52 @@ const Dashboard = () => {
   };
 
   const handleSaveQuestion = async (questionData: QuestionData) => {
-    if (questionData.question.trim()) {
-      if (currentlyEditing !== null) {
-        const updatedQuestions = questions.map(q =>
-          q.id === currentlyEditing
-            ? {
-                ...q,
-                question: questionData.question,
-                answers: questionData.answers,
-                tags: questionData.tags,
-                difficulty: questionData.difficulty,
-                title: questionData.title,
-              }
-            : q
-        );
-        setQuestions(updatedQuestions);
-        setCurrentlyEditing(null);
-      } else {
-        const newQuestion: DashboardQuestion = {
-          id: nextId.toString(),
-          title: questionData.title,
-          question: questionData.question,
-          answers: questionData.answers,
-          difficulty: questionData.difficulty,
-          tags: questionData.tags,
-          isExpanded: false,
-          onEditMarkdown: () => {},
-          type: 'question'
-        };
-        setQuestions([...questions, newQuestion]);
-        setNextId(nextId + 1);
-      }
-      setShowEditor(false);
-      setInitialData(undefined);
+    if (!questionData.question.trim()) return;
+
+    const newQuestionData: DashboardQuestion = {
+      id: currentlyEditing || uuidv4(),
+      title: questionData.title,
+      question: questionData.question,
+      answers: questionData.answers,
+      difficulty: questionData.difficulty,
+      tags: questionData.tags,
+      isExpanded: false,
+      onEditMarkdown: () => {},
+      type: 'question'
+    };
+
+    if (currentlyEditing) {
+      const updatedQuestions = questions.map(q =>
+        q.id === currentlyEditing ? newQuestionData : q
+      );
+      setQuestions(updatedQuestions);
+    } else {
+      setQuestions([...questions, newQuestionData]);
     }
+
+    setShowEditor(false);
+    setInitialData(undefined);
+    setCurrentlyEditing(null);
   };
 
-  const handleEdit = (question: BaseQuestion | DashboardQuestion) => {
+  const handleEdit = (question: Question) => {
     setCurrentlyEditing(question.id);
     const questionData: Question = {
-      id: question.id,
-      question: question.question,
+      ...question,
       answers: question.answers.map(a => ({
         ...a,
         isCorrect: a.isCorrect || false
-      })),
-      title: question.title,
-      difficulty: question.difficulty,
-      tags: question.tags,
-      type: 'question'
+      }))
     };
     setInitialData(questionData);
     setShowEditor(true);
   };
 
   const handleNewQuestion = () => {
+    if (!fileSystem.handle) {
+      alert('Please select a directory first');
+      return;
+    }
     setCurrentlyEditing(null);
     setInitialData(undefined);
     setShowEditor(true);
@@ -219,16 +238,8 @@ const Dashboard = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl text-center font-bold">Question Editor</h1>
         <div className="flex gap-4">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            multiple
-            {...({ webkitdirectory: "", directory: "" } as FileInputProps)}
-          />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={loadDirectory}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
           >
             <Folder size={16} />
@@ -259,6 +270,7 @@ const Dashboard = () => {
           setQuestions={setQuestions}
           markdowns={markdowns}
           setMarkdowns={setMarkdowns}
+          fileSystem={fileSystem}
         />
       )}
     </div>

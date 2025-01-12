@@ -1,51 +1,96 @@
-import React, { Dispatch, SetStateAction, useState } from 'react';
-import { BaseQuestion, DashboardQuestion, MarkdownEditData, MarkdownData } from '@/app/components/Interfaces';
+import React, { useState } from 'react';
+import { MarkdownData, MarkdownEditData } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
-import { Trash2, Download, CheckSquare, Square } from 'lucide-react';
-import JSZip from 'jszip';
+import { Trash2, CheckSquare, Square } from 'lucide-react';
+import { Question, DashboardQuestion } from '../../components/Dashboard';
+
 interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
-  onEdit: (question: BaseQuestion | DashboardQuestion) => void;
-  setQuestions: Dispatch<SetStateAction<DashboardQuestion[]>>;
+  onEdit: (question: Question) => void;
+  setQuestions: React.Dispatch<React.SetStateAction<DashboardQuestion[]>>;
   onEditMarkdown: (markdown: MarkdownEditData) => void;
   markdowns: MarkdownData[];
   setMarkdowns: React.Dispatch<React.SetStateAction<MarkdownData[]>>;
+  fileSystem: {
+    handle: FileSystemDirectoryHandle | null;
+    path: string;
+  };
+}
 
+interface ParsedMarkdownData {
+  title: string;
+  question: string;
+  answers: { id: string; text: string; isCorrect: boolean; }[];
+  difficulty: number;
+  tags: string[];
+  markdownContent: string;
 }
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({ 
   questions, 
   onEdit, 
   setQuestions,
+  //onEditMarkdown,
+  fileSystem,
 }) => {
-  const [editingMarkdown, setEditingMarkdown] = useState<{id: string, content: string} | null>(null);
+  const [editingMarkdown, setEditingMarkdown] = useState<{
+    id: string;
+    content: string;
+    filename: string;
+  } | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this question?')) {
-      setQuestions(prevQuestions => 
-        prevQuestions.filter(q => String(q.id) !== String(id))
-      );
-      setSelectedQuestions(prev => prev.filter(qId => qId !== id));
+  const handleDelete = async (id: string) => {
+    if (!fileSystem.handle) return;
+
+    if (window.confirm('Are you sure you want to delete this question? This will remove the file from your local directory.')) {
+      try {
+        const questionToDelete = questions.find(q => q.id === id);
+        if (questionToDelete) {
+          const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+          await fileSystem.handle.removeEntry(filename);
+          
+          setQuestions(prevQuestions => 
+            prevQuestions.filter(q => q.id !== id)
+          );
+          setSelectedQuestions(prev => prev.filter(qId => qId !== id));
+        }
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        if ((error as Error).name === 'NotFoundError') {
+          setQuestions(prevQuestions => 
+            prevQuestions.filter(q => q.id !== id)
+          );
+        } else {
+          alert('Failed to delete file. Please check permissions and try again.');
+        }
+      }
     }
   };
 
-  // const handleDeleteAll = () => {
-  //   if (window.confirm('Are you sure you want to delete all questions? This action cannot be undone.')) {
-  //     setQuestions([]);
-  //     setSelectedQuestions([]);
-  //   }
-  // };
-
-  const handleDeleteSelected = () => {
-    if (selectedQuestions.length === 0) {
-      alert('Please select questions to delete');
+  const handleDeleteSelected = async () => {
+    if (!fileSystem.handle || selectedQuestions.length === 0) {
+      alert(fileSystem.handle ? 'Please select questions to delete' : 'Please select a directory first');
       return;
     }
     
-    if (window.confirm(`Are you sure you want to delete ${selectedQuestions.length} selected question(s)? This action cannot be undone.`)) {
+    if (window.confirm(`Are you sure you want to delete ${selectedQuestions.length} selected question(s)?`)) {
+      for (const id of selectedQuestions) {
+        const questionToDelete = questions.find(q => q.id === id);
+        if (questionToDelete) {
+          const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+          try {
+            await fileSystem.handle.removeEntry(filename);
+          } catch (error) {
+            if ((error as Error).name !== 'NotFoundError') {
+              console.error(`Error deleting file ${filename}:`, error);
+            }
+          }
+        }
+      }
+
       setQuestions(prevQuestions => 
-        prevQuestions.filter(q => !selectedQuestions.includes(String(q.id)))
+        prevQuestions.filter(q => !selectedQuestions.includes(q.id))
       );
       setSelectedQuestions([]);
     }
@@ -53,112 +98,73 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const toggleExpand = (id: string) => {
     setQuestions(questions.map(q =>
-      q.id === String(id) ? { ...q, isExpanded: !q.isExpanded } : q
+      q.id === id ? { ...q, isExpanded: !q.isExpanded } : q
     ));
   };
 
   const handleEditMarkdown = (question: DashboardQuestion) => {
+    const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
     const markdownContent = generateMarkdown(question);
     setEditingMarkdown({
       id: question.id,
-      content: markdownContent
+      content: markdownContent,
+      filename: filename
     });
   };
 
-  const saveMarkdownChanges = () => {
-    if (editingMarkdown) {
-      try {
-        const parsedData = parseMarkdownContent(editingMarkdown.content);
-        const updatedQuestions = questions.map(q =>
+  const saveMarkdownChanges = async () => {
+    if (!fileSystem.handle || !editingMarkdown) {
+      alert(fileSystem.handle ? 'No changes to save' : 'Please select a directory first');
+      return;
+    }
+  
+    try {
+      const parsedData = parseMarkdownContent(editingMarkdown.content) as ParsedMarkdownData;
+
+      
+      const newFilename = `${parsedData.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+      
+  
+      if (newFilename !== editingMarkdown.filename) {
+        try {
+          await fileSystem.handle.removeEntry(editingMarkdown.filename);
+        } catch (error) {
+          if ((error as Error).name !== 'NotFoundError') {
+            throw error;
+          }
+        }
+      }
+  
+     
+      const fileHandle = await fileSystem.handle.getFileHandle(newFilename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(editingMarkdown.content);
+      await writable.close();
+  
+     
+      setQuestions(prevQuestions =>
+        prevQuestions.map(q =>
           q.id === editingMarkdown.id
             ? {
                 ...q,
+                ...parsedData,
+                title: parsedData.title,
                 markdownContent: editingMarkdown.content,
-                question: parsedData.question,
-                answers: parsedData.answers,
-                difficulty: parsedData.difficulty,
-                tags: parsedData.tags,
+                type: 'question',
+                isExpanded: q.isExpanded,
+                id: editingMarkdown.id,
+                onEditMarkdown: q.onEditMarkdown
               }
             : q
-        );
-        setQuestions(updatedQuestions);
-        setEditingMarkdown(null);
-      } catch (error) {
-        console.error('Error parsing markdown content:', error);
-        alert('Error parsing markdown content. Please check the format and try again.');
-      }
-      
-    }
-  };
-
-  const downloadAsZip = async (questionsToDownload: DashboardQuestion[]) => {
-    try {
-      const zip = new JSZip();
-      
-      // Add each question as a markdown file to the zip
-      questionsToDownload.forEach(question => {
-        const content = generateMarkdown(question);
-        const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-        zip.file(filename, content);
-      });
-      
-
-      const blob = await zip.generateAsync({ type: "blob" });
-      
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'questions.zip';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+        )
+      );
+  
+      setEditingMarkdown(null);
     } catch (error) {
-      console.error('Error creating zip file:', error);
-      alert('Failed to create zip file. Please try again.');
+      console.error('Error saving markdown changes:', error);
+      alert((error as Error).message || 'Error saving changes. Please try again.');
     }
   };
-
-  const downloadQuestion = (question: DashboardQuestion) => {
-    try {
-      const content = generateMarkdown(question);
-      const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-      const blob = new Blob([content], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading question:', error);
-      alert('Failed to download question. Please try again.');
-    }
-  };
-
-  const downloadSelected = () => {
-    if (selectedQuestions.length === 0) {
-      alert('Please select questions to download');
-      return;
-    }
-    
-    const selectedQuestionData = questions.filter(q => 
-      selectedQuestions.includes(String(q.id))
-    );
-    
-    downloadAsZip(selectedQuestionData);
-  };
-
-  // const downloadAll = () => {
-  //   if (questions.length === 0) {
-  //     alert('No questions to download');
-  //     return;
-  //   }
-  //   questions.forEach(question => downloadQuestion(question));
-  // };
 
   const toggleSelect = (id: string) => {
     setSelectedQuestions(prev => 
@@ -169,65 +175,31 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   };
 
   const toggleSelectAll = () => {
-    if (selectedQuestions.length === questions.length) {
-      setSelectedQuestions([]);
-    } else {
-      setSelectedQuestions(questions.map(q => String(q.id)));
-    }
+    setSelectedQuestions(prev =>
+      prev.length === questions.length ? [] : questions.map(q => q.id)
+    );
   };
+
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2">
-          {questions.length > 0 && (
-            <button
-              onClick={toggleSelectAll}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 flex items-center gap-2"
-            >
-              {selectedQuestions.length === questions.length ? (
-                <CheckSquare size={16} />
-              ) : (
-                <Square size={16} />
-              )}
-              {selectedQuestions.length === questions.length ? 'Deselect All' : 'Select All'}
-            </button>
-          )}
-          {selectedQuestions.length > 0 && (
-            <>
-              <button
-                onClick={handleDeleteSelected}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
-              >
-                <Trash2 size={16} />
-                Delete Selected ({selectedQuestions.length})
-              </button>
-              <button
-                onClick={downloadSelected}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
-              >
-                <Download size={16} />
-                Download Selected ({selectedQuestions.length})
-              </button>
-            </>
+        <div className="flex justify-between items-center mb-4">
+          {fileSystem.handle && (
+            <span className="text-gray-600">
+              Working directory: {fileSystem.path}
+            </span>
           )}
         </div>
-        {questions.length > 0 && (
+        {selectedQuestions.length > 0 && (
           <div className="flex gap-2">
-            {/* <button
-              onClick={downloadAll}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-2"
-            >
-              <Download size={16} />
-              Download All
-            </button> */}
-            {/* <button
-              onClick={handleDeleteAll}
+            <button
+              onClick={handleDeleteSelected}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
             >
               <Trash2 size={16} />
-              Delete All
-            </button> */}
+              Delete Selected
+            </button>
           </div>
         )}
       </div>
@@ -236,6 +208,19 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         <p className="text-center text-gray-500 italic">No questions created yet. Create New Question to get started.</p>
       ) : (
         <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleSelectAll}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-2"
+            >
+              {selectedQuestions.length === questions.length ? (
+                <Square className="w-4 h-4" />
+              ) : (
+                <CheckSquare className="w-4 h-4" />
+              )}
+              {selectedQuestions.length === questions.length ? 'Deselect All' : 'Select All'}
+            </button>
+          </div>
           {questions.map((question) => (
             <div
               key={question.id}
@@ -331,15 +316,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                             className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                           >
                             Delete
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              downloadQuestion(question);
-                            }}
-                            className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                          >
-                            Download
                           </button>
                         </div>
                       </div>
