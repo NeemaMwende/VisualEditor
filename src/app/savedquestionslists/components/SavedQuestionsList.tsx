@@ -124,35 +124,30 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       if (!parsedData) {
         throw new Error('Invalid markdown format');
       }
-
+  
       const originalQuestion = questions.find(q => q.id === editingMarkdown.id);
       if (!originalQuestion) {
         throw new Error('Question not found');
       }
-
-      // Use original title if parsed title is empty or undefined
+  
       const updatedTitle = parsedData.title || editingMarkdown.originalTitle;
-      const newFilename = `${updatedTitle.toLowerCase().replace(/\s+/g, '-')}.md`;
       
-      // Handle file renaming if title changed
-      if (newFilename !== editingMarkdown.filename) {
-        try {
-          // Delete old file
-          await fileSystem.handle.removeEntry(editingMarkdown.filename);
-        } catch (error) {
-          // Ignore NotFoundError as the file might not exist
-          if ((error as Error).name !== 'NotFoundError') {
-            throw error;
-          }
+      let fileHandle: FileSystemFileHandle;
+      try {
+        fileHandle = await fileSystem.handle.getFileHandle(editingMarkdown.filename);
+      } catch (error) {
+        if ((error as Error).name === 'NotFoundError') {
+          fileHandle = await fileSystem.handle.getFileHandle(editingMarkdown.filename, { create: true });
+        } else {
+          throw error;
         }
       }
-
-      // Save new file
-      const fileHandle = await fileSystem.handle.getFileHandle(newFilename, { create: true });
+  
+      // Write the updated content to the existing file
       const writable = await fileHandle.createWritable();
       await writable.write(editingMarkdown.content);
       await writable.close();
-
+  
       // Update questions state while preserving original properties
       setQuestions(prevQuestions =>
         prevQuestions.map(q =>
@@ -173,7 +168,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
             : q
         )
       );
-
+  
       setEditingMarkdown(null);
     } catch (error) {
       console.error('Error saving markdown changes:', error);
