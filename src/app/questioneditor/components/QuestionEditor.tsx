@@ -101,10 +101,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
 
   useEffect(() => {
-    if (showMarkdown) {
+    if (showMarkdown && markdownContent !== currentMarkdown) {
       setMarkdownContent(currentMarkdown);
     }
   }, [showMarkdown, currentMarkdown]);
+  
 
   useEffect(() => {
     if (showMarkdown && markdownContent) {

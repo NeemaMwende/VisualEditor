@@ -30,13 +30,13 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   questions, 
   onEdit, 
   setQuestions,
-  //onEditMarkdown,
   fileSystem,
 }) => {
   const [editingMarkdown, setEditingMarkdown] = useState<{
     id: string;
     content: string;
     filename: string;
+    originalTitle: string;
   } | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
@@ -108,7 +108,8 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setEditingMarkdown({
       id: question.id,
       content: markdownContent,
-      filename: filename
+      filename: filename,
+      originalTitle: question.title
     });
   };
 
@@ -120,40 +121,49 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   
     try {
       const parsedData = parseMarkdownContent(editingMarkdown.content) as ParsedMarkdownData;
-
-      
-      const newFilename = `${parsedData.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-      
+      if (!parsedData) {
+        throw new Error('Invalid markdown format');
+      }
   
-      if (newFilename !== editingMarkdown.filename) {
-        try {
-          await fileSystem.handle.removeEntry(editingMarkdown.filename);
-        } catch (error) {
-          if ((error as Error).name !== 'NotFoundError') {
-            throw error;
-          }
+      const originalQuestion = questions.find(q => q.id === editingMarkdown.id);
+      if (!originalQuestion) {
+        throw new Error('Question not found');
+      }
+  
+      const updatedTitle = parsedData.title || editingMarkdown.originalTitle;
+      
+      let fileHandle: FileSystemFileHandle;
+      try {
+        fileHandle = await fileSystem.handle.getFileHandle(editingMarkdown.filename);
+      } catch (error) {
+        if ((error as Error).name === 'NotFoundError') {
+          fileHandle = await fileSystem.handle.getFileHandle(editingMarkdown.filename, { create: true });
+        } else {
+          throw error;
         }
       }
   
-     
-      const fileHandle = await fileSystem.handle.getFileHandle(newFilename, { create: true });
+      // Write the updated content to the existing file
       const writable = await fileHandle.createWritable();
       await writable.write(editingMarkdown.content);
       await writable.close();
   
-     
+      // Update questions state while preserving original properties
       setQuestions(prevQuestions =>
         prevQuestions.map(q =>
           q.id === editingMarkdown.id
             ? {
                 ...q,
-                ...parsedData,
-                title: parsedData.title,
+                title: updatedTitle,
+                question: parsedData.question,
+                answers: parsedData.answers.map(answer => ({
+                  ...answer,
+                  id: answer.id || Math.random().toString(36).substr(2, 9)
+                })),
+                difficulty: parsedData.difficulty,
+                tags: parsedData.tags,
                 markdownContent: editingMarkdown.content,
-                type: 'question',
-                isExpanded: q.isExpanded,
-                id: editingMarkdown.id,
-                onEditMarkdown: q.onEditMarkdown
+                type: 'question'
               }
             : q
         )
@@ -162,7 +172,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       setEditingMarkdown(null);
     } catch (error) {
       console.error('Error saving markdown changes:', error);
-      alert((error as Error).message || 'Error saving changes. Please try again.');
+      alert('Error saving changes: ' + ((error as Error).message || 'Please check the markdown format and try again.'));
     }
   };
 
@@ -179,7 +189,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       prev.length === questions.length ? [] : questions.map(q => q.id)
     );
   };
-
 
   return (
     <div className="space-y-4">
