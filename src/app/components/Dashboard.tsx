@@ -1,12 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import QuestionEditor from '../questioneditor/components/QuestionEditor';
-import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
+import React, { useState, useEffect, Suspense } from 'react';
 import { MarkdownData } from '@/app/components/Interfaces';
 import { parseMarkdownContent, generateMarkdown } from './../../utils/markdownUtils';
 import { Folder } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-
+import { QuestionSkeleton, QuestionEditorSkeleton } from '../Skeleton';
+import dynamic from 'next/dynamic';
 
 interface ParsedMarkdownData {
   title: string;
@@ -62,6 +61,20 @@ interface FileSystemState {
   path: string;
 }
 
+// Dynamic imports for better code splitting
+const QuestionEditor = dynamic(() => import('../questioneditor/components/QuestionEditor'), {
+  loading: () => <QuestionEditorSkeleton />
+});
+
+const SavedQuestionsList = dynamic(() => import('../savedquestionslists/components/SavedQuestionsList'), {
+  loading: () => (
+    <div className="space-y-4">
+      {[...Array(3)].map((_, i) => (
+        <QuestionSkeleton key={i} />
+      ))}
+    </div>
+  )
+});
 
 const Dashboard = () => {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
@@ -71,22 +84,22 @@ const Dashboard = () => {
   const [markdowns, setMarkdowns] = useState<MarkdownData[]>([]);
   const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<string | null>(null);
   const [fileSystem, setFileSystem] = useState<FileSystemState>({ handle: null, path: '' });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const loadDirectory = async () => {
+const loadDirectory = async () => {
     if (!window.showDirectoryPicker) {
       console.error('Directory picker is not supported in this environment');
       return;
     }
-  
+
+    setIsLoading(true);
     try {
       const handle = await window.showDirectoryPicker();
       setFileSystem({ handle, path: handle.name });
-  
+
       const loadedQuestions: DashboardQuestion[] = [];
-  
       for await (const entry of handle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-         
           if (entry instanceof FileSystemFileHandle) {
             const file = await entry.getFile();
             const content = await file.text();
@@ -109,14 +122,13 @@ const Dashboard = () => {
           }
         }
       }
-  
       setQuestions(loadedQuestions);
     } catch (error) {
-      if ((error as Error).name === 'AbortError') {
-        return;
-      }
+      if ((error as Error).name === 'AbortError') return;
       console.error('Error accessing directory:', error);
       alert('Unable to access directory. Please check permissions and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -240,39 +252,43 @@ const Dashboard = () => {
         <div className="flex gap-4">
           <button
             onClick={loadDirectory}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2 disabled:opacity-50"
+            disabled={isLoading}
           >
             <Folder size={16} />
-            Import Questions
+            {isLoading ? 'Loading...' : 'Import Questions'}
           </button>
           <button
             onClick={handleNewQuestion}
-            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
+            disabled={!fileSystem.handle}
           >
             Create New Question
           </button>
         </div>
       </div>
 
-      {showEditor ? (
-        <QuestionEditor
-          onSave={handleSaveQuestion}
-          onBack={handleBack}
-          onSaveMarkdown={handleSaveMarkdown}
-          initialData={initialData}
-          isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
-        />
-      ) : (
-        <SavedQuestionsList
-          questions={questions}
-          onEdit={handleEdit}
-          onEditMarkdown={handleEditMarkdown}
-          setQuestions={setQuestions}
-          markdowns={markdowns}
-          setMarkdowns={setMarkdowns}
-          fileSystem={fileSystem}
-        />
-      )}
+      <Suspense fallback={showEditor ? <QuestionEditorSkeleton /> : <QuestionSkeleton />}>
+        {showEditor ? (
+          <QuestionEditor
+            onSave={handleSaveQuestion}
+            onBack={handleBack}
+            onSaveMarkdown={handleSaveMarkdown}
+            initialData={initialData}
+            isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
+          />
+        ) : (
+          <SavedQuestionsList
+            questions={questions}
+            onEdit={handleEdit}
+            onEditMarkdown={handleEditMarkdown}
+            setQuestions={setQuestions}
+            markdowns={markdowns}
+            setMarkdowns={setMarkdowns}
+            fileSystem={fileSystem}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

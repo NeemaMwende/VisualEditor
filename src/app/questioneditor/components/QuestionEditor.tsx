@@ -1,11 +1,12 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
-import { generateMarkdown, parseMarkdownContent, } from '../../../utils/markdownUtils';
+import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
+
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
@@ -57,17 +58,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [selectedFiles] = useState<FileData[]>([]);
   const [currentFile] = useState<FileData | null>(null);
   const [title, setTitle] = useState(initialData?.title || '');
-
-  const randomizeAnswers = () => {
-    setAnswers(prevAnswers => {
-      const shuffledAnswers = [...prevAnswers];
-      for (let i = shuffledAnswers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
-      }
-      return shuffledAnswers;
-    });
-  };
+  const [isMarkdownSyncing, setIsMarkdownSyncing] = useState(false);
 
   const currentMarkdown = useMemo(() => {
     return generateMarkdown({
@@ -79,6 +70,17 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       title: title || currentFile?.name || ''
     });
   }, [question, answers, difficulty, tags, title, currentFile?.name, initialData?.id]);
+
+  const randomizeAnswers = () => {
+    setAnswers(prevAnswers => {
+      const shuffledAnswers = [...prevAnswers];
+      for (let i = shuffledAnswers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
+      }
+      return shuffledAnswers;
+    });
+  };
 
   useEffect(() => {
     if (isEditing && initialData) {
@@ -101,51 +103,41 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
 
   useEffect(() => {
-    if (showMarkdown && markdownContent !== currentMarkdown) {
+    if (showMarkdown && !isMarkdownSyncing) {
       setMarkdownContent(currentMarkdown);
     }
-  }, [showMarkdown, currentMarkdown]);
-  
+  }, [showMarkdown, currentMarkdown, isMarkdownSyncing]);
 
+ 
   useEffect(() => {
-    if (showMarkdown && markdownContent) {
+    if (showMarkdown && markdownContent && !isMarkdownSyncing) {
       try {
         const parsedData = parseMarkdownContent(markdownContent);
         if (parsedData) {
-          const updatedAnswers = answers.map((existingAnswer, index) => ({
-            id: existingAnswer.id,
-            text: parsedData.answers[index]?.text || '',
-            isCorrect: parsedData.answers[index]?.isCorrect || false
-          }));
+          setIsMarkdownSyncing(true);
           
-          if (parsedData.question.trim() !== question.trim()) {
-            setQuestion(parsedData.question.trim());
-          }
-          if (JSON.stringify(updatedAnswers) !== JSON.stringify(answers)) {
-            setAnswers(updatedAnswers);
-          }
-          if (parsedData.difficulty !== difficulty) {
-            setDifficulty(parsedData.difficulty);
-          }
-          if (JSON.stringify(parsedData.tags) !== JSON.stringify(tags)) {
-            setTags(parsedData.tags);
-          }
+          const updatedAnswers = parsedData.answers.map((answer, index) => ({
+            id: answers[index]?.id || uuidv4(),
+            text: answer.text || '',
+            isCorrect: answer.isCorrect || false
+          }));
+
+          setQuestion(parsedData.question.trim());
+          setAnswers(updatedAnswers);
+          setDifficulty(parsedData.difficulty);
+          setTags(parsedData.tags);
+          
+          setTimeout(() => setIsMarkdownSyncing(false), 0);
         }
       } catch (error) {
         console.error('Error parsing markdown:', error);
+        setIsMarkdownSyncing(false);
       }
     }
   }, [markdownContent, showMarkdown]);
 
   const handleMarkdownUpdate = (newContent: string) => {
     setMarkdownContent(newContent);
-    const parsedData = parseMarkdownContent(newContent);
-    if (parsedData) {
-      setQuestion(parsedData.question);
-      setAnswers(parsedData.answers);
-      setDifficulty(parsedData.difficulty);
-      setTags(parsedData.tags);
-    }
   };
 
   const handleSave = () => {
@@ -321,6 +313,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                             isCorrect: i === index
                           }));
                           setAnswers(newAnswers);
+                          setMarkdownContent(generateMarkdown({
+                            id: initialData?.id || uuidv4(),
+                            question,
+                            answers: newAnswers,
+                            difficulty,
+                            tags,
+                            title,
+                          }));
                         }}
                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
