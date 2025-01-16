@@ -21,59 +21,57 @@ export interface MarkdownData {
   createdAt: number;
 }
 
-const codePatterns = [
-  /\b(const|let|var|function)\b.*[=;]/,
-  /{[\s\S]*}/,
-  /\b(useHash|pushState|useHTML5):/,
-  /<[^>]+>/,
-  /\b(new \w+)\b/,
-  /\b\w+\((.*)\)/,
-  /import .* from/,
-  /export .*/,
-  /async|await/,
-  /\.[a-zA-Z]+\((.*)\)/,
-  /class\s+\w+/,
-  /=>\s*{/,
-  /return\s+.*[;{]/
-];
+const isActualCode = (text: string): boolean => {
+  const codePatterns = [
+    /\b(const|let|var|function)\s+\w+\s*=?\s*(\(.*\))?\s*(=>|\{)/,
+    /\bclass\s+\w+/,
+    /\b(import|export)\b.*\bfrom\b/,
+    /\b\w+\(\s*.*\s*\)\s*[;{]/,
+    /=>\s*{|\(\)\s*=>/,
+    /\b(if|for|while|switch)\s*\([^)]*\)\s*{/,
+    /computed\s*\(\s*\(\)\s*=>/,
+    /signal\s*\(\s*.*\s*\)/,
+    /<[A-Z]\w+(\s+\w+\s*=\s*{.*})*\s*\/?>.*<\/[A-Z]\w+>/
+  ];
 
-const detectCodeLanguage = (text: string): string => {
-  if (!text || typeof text !== 'string') return 'javascript';
-  
-  if (text.includes('interface ') || text.includes('type ') || text.includes(': ')) {
+  return codePatterns.some(pattern => pattern.test(text));
+};
+
+const detectCodeLanguage = (code: string): string => {
+  if (code.includes('signal(') || code.includes('computed(') || code.includes('@Input')) {
     return 'typescript';
   }
-  if (text.includes('<') && text.includes('>') && !text.includes('function')) {
-    return 'html';
+  if (code.includes('import React') || code.includes('useState') || /<[A-Z]\w+/.test(code)) {
+    return 'jsx';
   }
-  if (text.includes('def ') || text.includes('import ') && text.includes('from') && !text.includes(';')) {
-    return 'python';
-  }
-  if (text.includes('<?php') || text.includes('->')) {
-    return 'php';
+  if (code.includes('class ') || code.includes('function ') || code.includes('=>')) {
+    return 'javascript';
   }
   return 'javascript';
 };
 
-const wrapCodeForMarkdown = (text: string): string => {
-  if (!text || typeof text !== 'string') return '';
+// const wrapCodeForMarkdown = (text: string): string => {
+//   if (!text || typeof text !== 'string') return '';
   
-  const trimmedText = text.trim();
-  if (!trimmedText) return '';
+//   const trimmedText = text.trim();
+//   if (!trimmedText) return '';
 
-  const isCode = codePatterns.some(pattern => pattern.test(trimmedText));
-  if (isCode) {
-    const language = detectCodeLanguage(trimmedText);
-    return `\`\`\`${language}\n${trimmedText}\n\`\`\``;
-  }
-  return trimmedText;
-};
+//   const isCode = isActualCode(trimmedText);
+//   if (isCode) {
+//     const language = detectCodeLanguage(trimmedText);
+//     return `\`\`\`${language}\n${trimmedText}\n\`\`\``;
+//   }
+//   return trimmedText;
+// };
 
-const unwrapCodeForDisplay = (text: string): string => {
-  if (!text || typeof text !== 'string') return '';
+// const unwrapCodeForDisplay = (text: string): string => {
+//   if (!text || typeof text !== 'string') return '';
   
-  return text.replace(/```[\w]*\n([\s\S]*?)\n```/g, (_, code) => code.trim());
-};
+//   return text.replace(/```[\w]*\n([\s\S]*?)\n```/g, (match, code) => {
+//     const language = detectCodeLanguage(code.trim());
+//     return language ? match : code.trim();
+//   });
+// };
 
 export const generateMarkdown = (question: BaseQuestion): string => {
   if (!question || typeof question !== 'object') return '';
@@ -83,17 +81,53 @@ export const generateMarkdown = (question: BaseQuestion): string => {
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
-    md += '---\n\n\n';
-    
-    const processedQuestion = question.question ? wrapCodeForMarkdown(question.question) : '';
-    md += `${processedQuestion}\n\n`;
+    md += `---\n\n`;    
+
+    const lines = question.question.split('\n');
+    let processedQuestion = '';
+    let codeBuffer = '';
+    let isCollectingCode = false;
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      if (isActualCode(trimmedLine) && !isCollectingCode) {
+        isCollectingCode = true;
+        if (processedQuestion) processedQuestion += '\n\n';
+        codeBuffer = line + '\n';
+      } else if (isCollectingCode) {
+        if (!trimmedLine && !line.includes('}') && !line.includes(';')) {
+          isCollectingCode = false;
+          const language = detectCodeLanguage(codeBuffer);
+          processedQuestion += `\`\`\`${language}\n${codeBuffer}\`\`\`\n\n`;
+          codeBuffer = '';
+          if (trimmedLine) processedQuestion += line + '\n';
+        } else {
+          codeBuffer += line + '\n';
+        }
+      } else {
+        if (trimmedLine) processedQuestion += line + '\n';
+      }
+    }
+
+    if (isCollectingCode && codeBuffer) {
+      const language = detectCodeLanguage(codeBuffer);
+      processedQuestion += `\`\`\`${language}\n${codeBuffer}\`\`\`\n`;
+    }
+
+    md += processedQuestion.trim() + '\n\n';
 
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
           md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
-          const processedAnswer = answer.text ? wrapCodeForMarkdown(answer.text) : '';
-          md += `${processedAnswer}\n\n`;
+          const answerText = answer.text.trim();
+          if (isActualCode(answerText)) {
+            const language = detectCodeLanguage(answerText);
+            md += `\`\`\`${language}\n${answerText}\n\`\`\`\n\n`;
+          } else {
+            md += `${answerText}\n\n`;
+          }
         }
       });
     }
@@ -105,7 +139,14 @@ export const generateMarkdown = (question: BaseQuestion): string => {
   }
 };
 
-export const parseMarkdownContent = (content: string) => {
+export const parseMarkdownContent = (content: string): {
+  title: string;
+  question: string;
+  answers: Array<{ id: string; text: string; isCorrect: boolean }>;
+  difficulty: number;
+  tags: string[];
+  markdownContent: string;
+} => {
   if (!content || typeof content !== 'string') {
     return {
       title: '',
@@ -129,22 +170,19 @@ export const parseMarkdownContent = (content: string) => {
     };
 
     let inFrontMatter = false;
-    let inCodeBlock = false;
     let currentSection = '';
-    let currentAnswer = '';
-    let codeBlockContent = '';
+    let currentContent = '';
+    let codeBuffer = '';
+    let isCollectingCode = false;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (const line of lines) {
       const trimmedLine = line.trim();
-
-      // Handle front matter
+    
       if (trimmedLine === '---') {
         inFrontMatter = !inFrontMatter;
         continue;
       }
-
-      // Process front matter content
+    
       if (inFrontMatter) {
         if (trimmedLine.startsWith('difficulty:')) {
           const difficultyValue = parseInt(trimmedLine.substring(11).trim());
@@ -154,67 +192,56 @@ export const parseMarkdownContent = (content: string) => {
         }
         continue;
       }
-
-      // Handle code blocks
+    
       if (trimmedLine.startsWith('```')) {
-        if (!inCodeBlock) {
-          inCodeBlock = true;
-          continue;
+        if (!isCollectingCode) {
+          isCollectingCode = true;
         } else {
-          inCodeBlock = false;
+          isCollectingCode = false;
           if (currentSection === '') {
-            parsedData.question += codeBlockContent.trim();
+            parsedData.question += codeBuffer;
           } else {
-            currentAnswer += codeBlockContent.trim();
+            currentContent += codeBuffer;
           }
-          codeBlockContent = '';
-          continue;
+          codeBuffer = '';
         }
-      }
-
-      // Collect code block content
-      if (inCodeBlock) {
-        codeBlockContent += line + '\n';
         continue;
       }
-
-      // Handle section headers
+    
+      if (isCollectingCode) {
+        codeBuffer += line + '\n';
+        continue;
+      }
+    
       if (trimmedLine.startsWith('#')) {
-        if (currentAnswer) {
+        if (currentContent) {
           parsedData.answers.push({
             id: (parsedData.answers.length + 1).toString(),
-            text: unwrapCodeForDisplay(currentAnswer.trim()),
-            isCorrect: currentSection.includes('correct')
+            text: currentContent.trim(),
+            isCorrect: currentSection.includes('Correct'),
           });
-          currentAnswer = '';
+          currentContent = '';
         }
-        currentSection = trimmedLine.toLowerCase();
+        currentSection = trimmedLine;
         continue;
       }
-
-      // Handle regular content
-      if (trimmedLine) {
-        if (currentSection === '') {
-          if (!parsedData.question) {
-            parsedData.question = trimmedLine;
-          } else {
-            parsedData.question += '\n\n' + trimmedLine;
-          }
-        } else {
-          currentAnswer += trimmedLine + '\n';
-        }
+    
+      if (currentSection === '') {
+        if (trimmedLine) parsedData.question += line + '\n';
+      } else {
+        if (trimmedLine) currentContent += line + '\n';
       }
     }
+    
 
-    if (currentAnswer) {
+    if (currentContent) {
       parsedData.answers.push({
         id: (parsedData.answers.length + 1).toString(),
-        text: unwrapCodeForDisplay(currentAnswer.trim()),
-        isCorrect: currentSection.includes('correct')
+        text: currentContent.trim(),
+        isCorrect: currentSection.includes('Correct')
       });
     }
 
-    // Ensure exactly 4 answers
     while (parsedData.answers.length < 4) {
       parsedData.answers.push({
         id: (parsedData.answers.length + 1).toString(),
@@ -222,12 +249,6 @@ export const parseMarkdownContent = (content: string) => {
         isCorrect: false
       });
     }
-
-    parsedData.question = unwrapCodeForDisplay(parsedData.question.trim());
-    parsedData.answers = parsedData.answers.map(answer => ({
-      ...answer,
-      text: unwrapCodeForDisplay(answer.text.trim())
-    }));
 
     return parsedData;
   } catch (error) {
@@ -243,11 +264,11 @@ export const parseMarkdownContent = (content: string) => {
   }
 };
 
-export const saveMarkdownToLocalStorage = (markdownFiles: MarkdownFile[]): void => {
+export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {
-    localStorage.setItem('markdownFiles', JSON.stringify(markdownFiles));
+    localStorage.setItem('markdownFiles', JSON.stringify(files));
   } catch (error) {
-    console.error('Error saving markdown files to localStorage:', error);
+    console.error('Error saving to localStorage:', error);
   }
 };
 
