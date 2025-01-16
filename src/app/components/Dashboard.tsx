@@ -1,7 +1,5 @@
 'use client';
 import React, { useState, useEffect, Suspense } from 'react';
-//import QuestionEditor from '../questioneditor/components/QuestionEditor';
-//import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
 import { MarkdownData } from '@/app/components/Interfaces';
 import { parseMarkdownContent, generateMarkdown } from './../../utils/markdownUtils';
 import { Folder } from 'lucide-react';
