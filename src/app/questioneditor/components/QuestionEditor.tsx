@@ -313,6 +313,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                             isCorrect: i === index
                           }));
                           setAnswers(newAnswers);
+                          setMarkdownContent(generateMarkdown({
+                            id: initialData?.id || uuidv4(),
+                            question,
+                            answers: newAnswers,
+                            difficulty,
+                            tags,
+                            title,
+                          }));
                         }}
                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
