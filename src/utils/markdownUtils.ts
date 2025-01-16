@@ -161,6 +161,20 @@ export const parseMarkdownContent = (content: string): {
 
   try {
     const lines = content.split('\n');
+    const answersIndex = lines.findIndex(line => line.startsWith('**Answers:**'));
+    const answers: { text: string; isCorrect: boolean }[] = [];
+  if (answersIndex !== -1) {
+    for (let i = answersIndex + 2; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('-')) {
+        const isCorrect = /\*\*(.+)\*\*/.test(line);
+        const text = line.replace(/[-*]\s*/, '').replace(/\*\*/g, '').trim();  // **<- Apply fix here**
+        answers.push({ text, isCorrect });
+      } else {
+        break;
+      }
+    }
+  }
     const parsedData = {
       title: '',
       question: '',
@@ -234,7 +248,7 @@ export const parseMarkdownContent = (content: string): {
       }
     }
     
-
+    
     if (currentContent) {
       parsedData.answers.push({
         id: (parsedData.answers.length + 1).toString(),
