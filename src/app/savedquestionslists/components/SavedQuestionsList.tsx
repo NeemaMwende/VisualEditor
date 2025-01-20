@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { MarkdownData, MarkdownEditData } from '@/app/components/Interfaces';
+import { MarkdownData, MarkdownEditData, DashboardQuestion } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { Trash2, CheckSquare, Square } from 'lucide-react';
-import { Question, DashboardQuestion } from '../../components/Dashboard';
+import { Question } from '../../components/Dashboard';
 
 interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
@@ -24,6 +24,7 @@ interface ParsedMarkdownData {
   difficulty: number;
   tags: string[];
   markdownContent: string;
+   enableCodeFormatting?: boolean;
 }
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({ 

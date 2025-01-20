@@ -14,6 +14,7 @@ interface ParsedMarkdownData {
   difficulty: number;
   tags: string[];
   markdownContent: string;
+  enableCodeFormatting?: boolean;
 }
 
 export interface Answer {

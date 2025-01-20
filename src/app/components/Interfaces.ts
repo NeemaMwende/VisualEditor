@@ -36,6 +36,8 @@ export interface DashboardQuestion extends BaseQuestion {
   initialData?: Answer[];
   onEditMarkdown: (markdown: MarkdownData) => void;
   type?: 'question' | 'markdown';
+  enableCodeFormatting?: boolean;
+  codeLanguage?: 'javascript' | 'html';
 }
 
 export interface EditorQuestion extends BaseQuestion {
