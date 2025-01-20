@@ -45,7 +45,12 @@ interface FileData {
   path: string;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initialData, isEditing = false, }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({
+  onSave,
+  onBack,
+  initialData,
+  isEditing = false,
+  }) => {
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
     { id: '1', text: '', isCorrect: false },
@@ -110,24 +115,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   );
 
   const currentMarkdown = useMemo(() => {
-    const orderedAnswers = answerOrder.length > 0
-      ? answerOrder.map(id => answers.find(a => a.id === id)!)
-      : answers;
-
     return generateMarkdown(
       {
         id: String(initialData?.id || Date.now()),
         question,
-        answers: orderedAnswers,
+        answers,
         difficulty,
         tags,
-        title: title || '',
-        codeLanguage: formattingOptions.defaultLanguage
+        title: title || currentFile?.name || ''
       },
       formattingOptions.enableCodeFormatting,
       formattingOptions.defaultLanguage
     );
-  }, [question, answers, difficulty, tags, title, initialData?.id, formattingOptions, answerOrder]);
+  }, [question, answers, difficulty, tags, title, currentFile?.name, initialData?.id, formattingOptions]);
+
 
   useEffect(() => {
     if (answers.length > 0 && answerOrder.length === 0) {
@@ -142,45 +143,26 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
     }
     setAnswerOrder(newOrder);
-    
-    // Update markdown content with new order
-    const reorderedAnswers = newOrder.map(id => answers.find(a => a.id === id)!);
-    const updatedMarkdown = generateMarkdown({
-      id: initialData?.id || uuidv4(),
-      question,
-      answers: reorderedAnswers,
-      difficulty,
-      tags,
-      title,
-      codeLanguage: formattingOptions.defaultLanguage
-    }, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage);
-    setMarkdownContent(updatedMarkdown);
-  };
 
   useEffect(() => {
     if (isEditing && initialData) {
       setQuestion(initialData.question || '');
-      const initialAnswers = (initialData.answers || []).map((answer) => ({
-        id: answer.id || uuidv4(),
-        text: answer.text || "",
-        isCorrect: !!answer.isCorrect,
-      }));
-      setAnswers(initialAnswers);
-      setAnswerOrder(initialAnswers.map(a => a.id));
+      setAnswers(
+        (initialData.answers || []).map((answer) => ({
+          id: answer.id || uuidv4(),
+          text: answer.text || "",
+          isCorrect: !!answer.isCorrect,
+        }))
+      );
       setDifficulty(initialData.difficulty || 1);
       setTitle(initialData.title || '');
       if (initialData.tags) {
         setTags(initialData.tags);
       }
       setMarkdownContent(initialData.markdownContent || '');
-      if ((initialData as Question).codeLanguage) {
-        setFormattingOptions(prev => ({
-          ...prev,
-          defaultLanguage: (initialData as Question).codeLanguage || 'javascript'
-        }));
-      }
     }
   }, [initialData, isEditing]);
+
 
   useEffect(() => {
     if (showMarkdown && !isMarkdownSyncing) {
@@ -188,12 +170,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     }
   }, [showMarkdown, currentMarkdown, isMarkdownSyncing]);
 
-
  
   useEffect(() => {
     if (showMarkdown && markdownContent && !isMarkdownSyncing) {
       try {
-        const parsedData = parseMarkdownContent(markdownContent, formattingOptions);
+        const parsedData = parseMarkdownContent(markdownContent);
         if (parsedData) {
           setIsMarkdownSyncing(true);
           
@@ -205,7 +186,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
 
           setQuestion(parsedData.question.trim());
           setAnswers(updatedAnswers);
-          setAnswerOrder(updatedAnswers.map(a => a.id));
           setDifficulty(parsedData.difficulty);
           setTags(parsedData.tags);
           
@@ -222,7 +202,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     setMarkdownContent(newContent);
   };
 
-
   const handleSave = () => {
     if (!title.trim()) {
       if (currentFile?.name) {
@@ -237,27 +216,24 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       }
     }
 
-    const orderedAnswers = answerOrder.map(id => answers.find(a => a.id === id)!);
     const updatedMarkdown = generateMarkdown({
       id: initialData?.id || uuidv4(),
       question,
-      answers: orderedAnswers,
+      answers,
       difficulty,
       tags,
       title,
-      codeLanguage: formattingOptions.defaultLanguage
-    }, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage);
+    });
   
     const savedData: Question = {
       id: initialData?.id || uuidv4(),
       question,
-      answers: orderedAnswers,
+      answers,
       difficulty,
       tags,
       title,
       type: 'question',
       markdownContent: updatedMarkdown,
-      codeLanguage: formattingOptions.defaultLanguage
     };
   
     try {

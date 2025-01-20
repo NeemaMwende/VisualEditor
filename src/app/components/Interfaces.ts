@@ -14,6 +14,7 @@ export interface BaseQuestion {
   tags: string[];
   isExpanded?: boolean;
   onEditMarkdown?: (markdown: MarkdownData) => void;  
+  codeLanguage?: 'javascript' | 'html'; 
 }
 
 export interface DashboardQuestion extends BaseQuestion {

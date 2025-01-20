@@ -39,7 +39,8 @@ const isActualCode = (text: string): { isCode: boolean; language: string } => {
   const htmlPatterns = [
     /<[a-zA-Z][^>]*>/,
     /<\/[a-zA-Z][^>]*>/,
-    /<[^>]+\/>/
+    /<[^>]+\/>/,
+    /<!DOCTYPE>/
   ];
 
   const isJS = jsPatterns.some(pattern => pattern.test(text));
@@ -50,18 +51,18 @@ const isActualCode = (text: string): { isCode: boolean; language: string } => {
   return { isCode: false, language: '' };
 };
 
-const detectCodeLanguage = (code: string): string => {
-  if (code.includes('signal(') || code.includes('computed(') || code.includes('@Input')) {
-    return 'typescript';
-  }
-  if (code.includes('import React') || code.includes('useState') || /<[A-Z]\w+/.test(code)) {
-    return 'jsx';
-  }
-  if (code.includes('class ') || code.includes('function ') || code.includes('=>')) {
-    return 'javascript';
-  }
-  return 'javascript';
-};
+// const detectCodeLanguage = (code: string): string => {
+//   if (code.includes('signal(') || code.includes('computed(') || code.includes('@Input')) {
+//     return 'typescript';
+//   }
+//   if (code.includes('import React') || code.includes('useState') || /<[A-Z]\w+/.test(code)) {
+//     return 'jsx';
+//   }
+//   if (code.includes('class ') || code.includes('function ') || code.includes('=>')) {
+//     return 'javascript';
+//   }
+//   return 'javascript';
+// };
 
 export const generateMarkdown = (
   question: BaseQuestion,
@@ -75,6 +76,7 @@ export const generateMarkdown = (
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
+   // md += `language: ${question.codeLanguage || defaultLanguage}\n`; 
     md += '---\n\n';
 
     const lines = question.question.split('\n');
@@ -167,6 +169,13 @@ export const parseMarkdownContent = (
   }
 
   try {
+    let codeLanguage: 'javascript' | 'html' = formattingOptions.defaultLanguage;
+
+    const languageMatch = content.match(/language:\s*(javascript|html)/);
+    if (languageMatch && (languageMatch[1] === 'javascript' || languageMatch[1] === 'html')) {
+      codeLanguage = languageMatch[1];
+    }
+
     const lines = content.split('\n');
     let inFrontMatter = false;
     let currentSection = '';
