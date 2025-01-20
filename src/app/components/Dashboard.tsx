@@ -2,11 +2,12 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { MarkdownData } from '@/app/components/Interfaces';
 import { parseMarkdownContent, generateMarkdown } from './../../utils/markdownUtils';
-import { Folder } from 'lucide-react';
+import { Folder, Plus } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { QuestionSkeleton, QuestionEditorSkeleton } from '../Skeleton';
 import dynamic from 'next/dynamic';
 
+// Interfaces remain the same as in original code
 interface ParsedMarkdownData {
   title: string;
   question: string;
@@ -61,7 +62,7 @@ interface FileSystemState {
   path: string;
 }
 
-// Dynamic imports for better code splitting
+// Dynamic imports
 const QuestionEditor = dynamic(() => import('../questioneditor/components/QuestionEditor'), {
   loading: () => <QuestionEditorSkeleton />
 });
@@ -76,6 +77,41 @@ const SavedQuestionsList = dynamic(() => import('../savedquestionslists/componen
   )
 });
 
+// Header component for better organization
+const DashboardHeader = ({
+  onLoadDirectory,
+  onNewQuestion,
+  isLoading,
+  hasFileSystem
+}: {
+  onLoadDirectory: () => void;
+  onNewQuestion: () => void;
+  isLoading: boolean;
+  hasFileSystem: boolean;
+}) => (
+  <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+    <h1 className="text-2xl sm:text-3xl font-bold">Question Editor</h1>
+    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+      <button
+        onClick={onLoadDirectory}
+        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center justify-center gap-2 disabled:opacity-50 w-full sm:w-auto"
+        disabled={isLoading}
+      >
+        <Folder className="w-4 h-4" />
+        <span className="whitespace-nowrap">{isLoading ? 'Loading...' : 'Import Questions'}</span>
+      </button>
+      <button
+        onClick={onNewQuestion}
+        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
+        disabled={!hasFileSystem}
+      >
+        <Plus className="w-4 h-4" />
+        <span>Create New Question</span>
+      </button>
+    </div>
+  </div>
+);
+
 const Dashboard = () => {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
   const [currentlyEditing, setCurrentlyEditing] = useState<string | null>(null);
@@ -86,7 +122,7 @@ const Dashboard = () => {
   const [fileSystem, setFileSystem] = useState<FileSystemState>({ handle: null, path: '' });
   const [isLoading, setIsLoading] = useState(false);
 
-const loadDirectory = async () => {
+  const loadDirectory = async () => {
     if (!window.showDirectoryPicker) {
       console.error('Directory picker is not supported in this environment');
       return;
@@ -131,7 +167,6 @@ const loadDirectory = async () => {
       setIsLoading(false);
     }
   };
-  
 
   const saveQuestionToFile = async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
@@ -246,49 +281,41 @@ const loadDirectory = async () => {
   };
 
   return (
-    <div className="container mx-auto p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl text-center font-bold">Question Editor</h1>
-        <div className="flex gap-4">
-          <button
-            onClick={loadDirectory}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2 disabled:opacity-50"
-            disabled={isLoading}
-          >
-            <Folder size={16} />
-            {isLoading ? 'Loading...' : 'Import Questions'}
-          </button>
-          <button
-            onClick={handleNewQuestion}
-            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
-            disabled={!fileSystem.handle}
-          >
-            Create New Question
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto">
+          <DashboardHeader
+            onLoadDirectory={loadDirectory}
+            onNewQuestion={handleNewQuestion}
+            isLoading={isLoading}
+            hasFileSystem={!!fileSystem.handle}
+          />
+
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+            <Suspense fallback={showEditor ? <QuestionEditorSkeleton /> : <QuestionSkeleton />}>
+              {showEditor ? (
+                <QuestionEditor
+                  onSave={handleSaveQuestion}
+                  onBack={handleBack}
+                  onSaveMarkdown={handleSaveMarkdown}
+                  initialData={initialData}
+                  isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
+                />
+              ) : (
+                <SavedQuestionsList
+                  questions={questions}
+                  onEdit={handleEdit}
+                  onEditMarkdown={handleEditMarkdown}
+                  setQuestions={setQuestions}
+                  markdowns={markdowns}
+                  setMarkdowns={setMarkdowns}
+                  fileSystem={fileSystem}
+                />
+              )}
+            </Suspense>
+          </div>
         </div>
       </div>
-
-      <Suspense fallback={showEditor ? <QuestionEditorSkeleton /> : <QuestionSkeleton />}>
-        {showEditor ? (
-          <QuestionEditor
-            onSave={handleSaveQuestion}
-            onBack={handleBack}
-            onSaveMarkdown={handleSaveMarkdown}
-            initialData={initialData}
-            isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
-          />
-        ) : (
-          <SavedQuestionsList
-            questions={questions}
-            onEdit={handleEdit}
-            onEditMarkdown={handleEditMarkdown}
-            setQuestions={setQuestions}
-            markdowns={markdowns}
-            setMarkdowns={setMarkdowns}
-            fileSystem={fileSystem}
-          />
-        )}
-      </Suspense>
     </div>
   );
 };
