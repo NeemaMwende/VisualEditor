@@ -7,7 +7,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { QuestionSkeleton, QuestionEditorSkeleton } from '../Skeleton';
 import dynamic from 'next/dynamic';
 
-// Interfaces remain the same as in original code
 interface ParsedMarkdownData {
   title: string;
   question: string;
@@ -77,7 +76,6 @@ const SavedQuestionsList = dynamic(() => import('../savedquestionslists/componen
   )
 });
 
-// Header component for better organization
 const DashboardHeader = ({
   onLoadDirectory,
   onNewQuestion,

@@ -486,3 +486,5 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     </div>
   );
 };
+
+export default QuestionEditor;
