@@ -51,24 +51,16 @@ const isActualCode = (text: string): { isCode: boolean; language: string } => {
   return { isCode: false, language: '' };
 };
 
-// const detectCodeLanguage = (code: string): string => {
-//   if (code.includes('signal(') || code.includes('computed(') || code.includes('@Input')) {
-//     return 'typescript';
-//   }
-//   if (code.includes('import React') || code.includes('useState') || /<[A-Z]\w+/.test(code)) {
-//     return 'jsx';
-//   }
-//   if (code.includes('class ') || code.includes('function ') || code.includes('=>')) {
-//     return 'javascript';
-//   }
-//   return 'javascript';
-// };
 
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
-  defaultLanguage: 'javascript' | 'html' = 'javascript'
+  defaultLanguage: 'javascript' | 'html' = 'javascript',
+  enableCodeFormatting?: boolean,
 ): string => {
+  const codeBlockStart = enableCodeFormatting ? `\`\`\`${defaultLanguage}` : '';
+  const codeBlockEnd = enableCodeFormatting ? '```' : '';
+
   if (!question || typeof question !== 'object') return '';
 
   try {
@@ -279,6 +271,7 @@ export const parseMarkdownContent = (
     };
   }
 };
+
 
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {

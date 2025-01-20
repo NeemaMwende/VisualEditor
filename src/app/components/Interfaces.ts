@@ -21,6 +21,7 @@ export interface DashboardQuestion extends BaseQuestion {
   onEdit?: () => void;
   initialData?: Answer[];
   onEditMarkdown: (markdown: MarkdownData) => void; 
+  codeLanguage?: 'javascript' | 'html'; 
 }
 
 // Question for Editor Component

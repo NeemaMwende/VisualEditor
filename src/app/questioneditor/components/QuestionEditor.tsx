@@ -77,18 +77,23 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       </div>
       
       <div className="flex items-center gap-6">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={formattingOptions.enableCodeFormatting}
-            onChange={(e) => setFormattingOptions(prev => ({
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={formattingOptions.enableCodeFormatting}
+          onChange={(e) => {
+            const newFormattingState = e.target.checked;
+            setFormattingOptions((prev) => ({
               ...prev,
-              enableCodeFormatting: e.target.checked
-            }))}
-            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-          />
-          <span className="text-sm">Enable automatic code formatting</span>
-        </label>
+              enableCodeFormatting: newFormattingState,
+            }));
+            updateMarkdownFormatting(newFormattingState);
+          }}
+          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+        />
+        <span className="text-sm">Enable automatic code formatting</span>
+      </label>
+
         
         <div className="flex items-center gap-2">
           <span className="text-sm">Default language:</span>
@@ -245,51 +250,71 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       }
     }
 
-    const reorderedAnswers = answerOrder.map(id => answers.find(a => a.id === id)!);
-  const updatedMarkdown = generateMarkdown(
-    {
+    const orderedAnswers = answerOrder.map((id) => answers.find((a) => a.id === id)!);
+
+    // Regenerate markdown with the current formatting preference
+    const updatedMarkdown = generateMarkdown(
+      {
+        id: initialData?.id || uuidv4(),
+        question,
+        answers: orderedAnswers,
+        difficulty,
+        tags,
+        title,
+        codeLanguage: formattingOptions.defaultLanguage,
+      },
+      formattingOptions.enableCodeFormatting, // Reflect toggle state
+      formattingOptions.defaultLanguage
+    );
+  
+    const savedData: Question = {
       id: initialData?.id || uuidv4(),
       question,
-      answers: reorderedAnswers,
+      answers: orderedAnswers,
       difficulty,
       tags,
       title,
+      type: 'question',
+      markdownContent: updatedMarkdown,
       codeLanguage: formattingOptions.defaultLanguage,
-    },
-    formattingOptions.enableCodeFormatting,
-    formattingOptions.defaultLanguage
-  );
-
-  const savedData: Question = {
-    id: initialData?.id || uuidv4(),
-    question,
-    answers: reorderedAnswers,
-    difficulty,
-    tags,
-    title,
-    type: 'question',
-    markdownContent: updatedMarkdown,
-    codeLanguage: formattingOptions.defaultLanguage,
+    };
+  
+    try {
+      const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
+  
+      const updatedQuestions = isEditing
+        ? existingQuestions.map((q: Question) =>
+            q.id === initialData?.id ? savedData : q
+          )
+        : [...existingQuestions, savedData];
+  
+      localStorage.setItem("questions", JSON.stringify(updatedQuestions));
+      alert("Saved successfully!");
+      onSave(savedData);
+    } catch (error) {
+      console.error("Error saving:", error);
+      alert("Failed to save. Please try again.");
+    }
   };
 
-  try {
-    const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
-
-    const updatedQuestions = isEditing
-      ? existingQuestions.map((q: Question) =>
-          q.id === initialData?.id ? savedData : q
-        )
-      : [...existingQuestions, savedData];
-
-    localStorage.setItem("questions", JSON.stringify(updatedQuestions));
-    alert("Saved successfully!");
-    onSave(savedData);
-  } catch (error) {
-    console.error("Error saving:", error);
-    alert("Failed to save. Please try again.");
-  }
-};
-
+  const updateMarkdownFormatting = (enableFormatting: boolean) => {
+    const updatedMarkdown = generateMarkdown(
+      {
+        id: initialData?.id || uuidv4(),
+        question,
+        answers,
+        difficulty,
+        tags,
+        title,
+        codeLanguage: formattingOptions.defaultLanguage,
+      },
+      enableFormatting,
+      formattingOptions.defaultLanguage
+    );
+  
+    setMarkdownContent(updatedMarkdown);
+  };
+  
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
       const confirm = window.confirm('You have unsaved changes. Are you sure you want to go back?');

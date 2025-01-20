@@ -104,7 +104,11 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const handleEditMarkdown = (question: DashboardQuestion) => {
     const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-    const markdownContent = generateMarkdown(question);
+    
+    const markdownContent = generateMarkdown(question,
+      question.enableCodeFormatting || false,
+      question.codeLanguage || 'javascript'
+    );
     setEditingMarkdown({
       id: question.id,
       content: markdownContent,
@@ -148,7 +152,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       await writable.write(editingMarkdown.content);
       await writable.close();
   
-      // Update questions state while preserving original properties
       setQuestions(prevQuestions =>
         prevQuestions.map(q =>
           q.id === editingMarkdown.id
@@ -163,6 +166,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                 difficulty: parsedData.difficulty,
                 tags: parsedData.tags,
                 markdownContent: editingMarkdown.content,
+                enableCodeFormatting: parsedData.enableCodeFormatting,
                 type: 'question'
               }
             : q
