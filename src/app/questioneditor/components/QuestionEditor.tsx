@@ -68,33 +68,32 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   const [answerOrder, setAnswerOrder] = useState<string[]>([]);
 
   const FormattingControls = () => (
-    <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-      <div className="flex items-center justify-between mb-4">
+    <div className="mb-6 p-2 sm:p-4 bg-gray-50 rounded-lg border">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
         <div className="flex items-center gap-2">
           <Settings size={20} className="text-gray-500" />
           <h3 className="font-medium">Code Formatting Options</h3>
         </div>
       </div>
       
-      <div className="flex items-center gap-6">
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={formattingOptions.enableCodeFormatting}
-          onChange={(e) => {
-            const newFormattingState = e.target.checked;
-            setFormattingOptions((prev) => ({
-              ...prev,
-              enableCodeFormatting: newFormattingState,
-            }));
-            updateMarkdownFormatting(newFormattingState);
-          }}
-          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-        />
-        <span className="text-sm">Enable automatic code formatting</span>
-      </label>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={formattingOptions.enableCodeFormatting}
+            onChange={(e) => {
+              const newFormattingState = e.target.checked;
+              setFormattingOptions((prev) => ({
+                ...prev,
+                enableCodeFormatting: newFormattingState,
+              }));
+              updateMarkdownFormatting(newFormattingState);
+            }}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+          />
+          <span className="text-sm">Enable automatic code formatting</span>
+        </label>
 
-        
         <div className="flex items-center gap-2">
           <span className="text-sm">Default language:</span>
           <select
@@ -113,6 +112,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       </div>
     </div>
   );
+
 
   const currentMarkdown = useMemo(() => {
     const orderedAnswers = answerOrder.length > 0
@@ -263,7 +263,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
         title,
         codeLanguage: formattingOptions.defaultLanguage,
       },
-      formattingOptions.enableCodeFormatting, // Reflect toggle state
+      formattingOptions.enableCodeFormatting, 
       formattingOptions.defaultLanguage
     );
   
@@ -324,19 +324,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
+    <div className="w-full max-w-4xl mx-auto p-2 sm:p-4">
       <div className="mb-4">
         <button
           onClick={handleBack}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
         >
           <ArrowLeft size={20} />
-          Back to Questions
+          <span className="hidden sm:inline">Back to Questions</span>
         </button>
       </div>
 
-      <div className="bg-white shadow-sm form-content p-6 rounded-lg space-y-6">
-      <FormattingControls /> 
+      <div className="bg-white shadow-sm form-content p-3 sm:p-6 rounded-lg space-y-4 sm:space-y-6">
+        <FormattingControls />
+        
         {showMarkdown ? (
           <div className="space-y-4">
             <label className="block text-gray-700 text-sm font-bold">
@@ -350,7 +351,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
             />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
               <label className="block text-gray-700 text-sm font-bold">
                 Title
@@ -360,7 +361,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
                 placeholder="Enter question title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 readOnly={!!currentFile}
               />
             </div>
@@ -373,7 +374,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(parseInt(e.target.value))}
-                  className="w-full p-3 border rounded-md appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  className="w-full p-2 sm:p-3 border rounded-md appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
                   <option value={1}>Beginner (Level 1)</option>
                   <option value={2}>Intermediate (Level 2)</option>
@@ -404,26 +405,26 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
                 placeholder="Enter your question here"
               />
             </div>
 
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <label className="block text-gray-700 text-sm font-bold">
                   Answers
                 </label>
                 <button
                   onClick={randomizeAnswers}
-                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors w-full sm:w-auto justify-center sm:justify-start"
                 >
                   <Shuffle size={16} />
                   Randomize Answers
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {answers.map((answer, index) => (
                   <div key={answer.id} className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -436,14 +437,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
                             isCorrect: i === index
                           }));
                           setAnswers(newAnswers);
-                          setMarkdownContent(generateMarkdown({
-                            id: initialData?.id || uuidv4(),
-                            question,
-                            answers: newAnswers,
-                            difficulty,
-                            tags,
-                            title,
-                          }));
                         }}
                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
@@ -458,7 +451,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
                         newAnswers[index] = { ...answer, text: e.target.value };
                         setAnswers(newAnswers);
                       }}
-                      className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={2}
                       placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
                     />
@@ -469,22 +462,22 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-6 border-t">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t">
           <button
             onClick={handleBack}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="w-full sm:w-auto px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             Cancel
           </button>
           <button
             onClick={() => setShowMarkdown(!showMarkdown)}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="w-full sm:w-auto px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             {showMarkdown ? 'Edit Question' : 'View Markdown'}
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
+            className="w-full sm:w-auto px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
           >
             {isEditing ? 'Save Changes' : 'Save Question'}
           </button>
@@ -493,5 +486,3 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     </div>
   );
 };
-
-export default QuestionEditor;
