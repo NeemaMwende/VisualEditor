@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { MarkdownData, MarkdownEditData } from '@/app/components/Interfaces';
+import { MarkdownData, MarkdownEditData, DashboardQuestion } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { Trash2, CheckSquare, Square } from 'lucide-react';
-import { Question, DashboardQuestion } from '../../components/Dashboard';
+import { Question } from '../../components/Dashboard';
 
 interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
@@ -24,6 +24,7 @@ interface ParsedMarkdownData {
   difficulty: number;
   tags: string[];
   markdownContent: string;
+   enableCodeFormatting?: boolean;
 }
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({ 
@@ -104,7 +105,11 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const handleEditMarkdown = (question: DashboardQuestion) => {
     const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-    const markdownContent = generateMarkdown(question);
+    
+    const markdownContent = generateMarkdown(question,
+      question.enableCodeFormatting || false,
+      question.codeLanguage || 'javascript'
+    );
     setEditingMarkdown({
       id: question.id,
       content: markdownContent,
@@ -143,12 +148,10 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         }
       }
   
-      // Write the updated content to the existing file
       const writable = await fileHandle.createWritable();
       await writable.write(editingMarkdown.content);
       await writable.close();
   
-      // Update questions state while preserving original properties
       setQuestions(prevQuestions =>
         prevQuestions.map(q =>
           q.id === editingMarkdown.id
@@ -163,6 +166,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                 difficulty: parsedData.difficulty,
                 tags: parsedData.tags,
                 markdownContent: editingMarkdown.content,
+                enableCodeFormatting: parsedData.enableCodeFormatting,
                 type: 'question'
               }
             : q
@@ -192,35 +196,35 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+        <div className="w-full sm:w-auto">
           {fileSystem.handle && (
-            <span className="text-gray-600">
+            <span className="text-gray-600 text-sm break-all">
               Working directory: {fileSystem.path}
             </span>
           )}
         </div>
         {selectedQuestions.length > 0 && (
-          <div className="flex gap-2">
+          <div className="w-full sm:w-auto">
             <button
               onClick={handleDeleteSelected}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
+              className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center justify-center gap-2"
             >
               <Trash2 size={16} />
-              Delete Selected
+              Delete Selected ({selectedQuestions.length})
             </button>
           </div>
         )}
       </div>
 
       {questions.length === 0 ? (
-        <p className="text-center text-gray-500 italic">No questions created yet. Create New Question to get started.</p>
+        <p className="text-center text-gray-500 italic p-4">No questions created yet. Create New Question to get started.</p>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <button
               onClick={toggleSelectAll}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-2"
+              className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center gap-2"
             >
               {selectedQuestions.length === questions.length ? (
                 <Square className="w-4 h-4" />
@@ -233,13 +237,13 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
           {questions.map((question) => (
             <div
               key={question.id}
-              className={`border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow ${
+              className={`border rounded-lg p-3 sm:p-4 bg-white shadow-sm hover:shadow-md transition-shadow ${
                 selectedQuestions.includes(String(question.id)) ? 'border-blue-500' : ''
               }`}
             >
               {editingMarkdown?.id === question.id ? (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Editing: {question.title}</h3>
+                  <h3 className="text-lg font-semibold break-all">Editing: {question.title}</h3>
                   <textarea
                     value={editingMarkdown.content}
                     onChange={(e) => setEditingMarkdown({
@@ -248,16 +252,16 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                     })}
                     className="w-full h-64 p-4 font-mono text-sm bg-gray-50 rounded border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <div className="flex justify-end space-x-2">
+                  <div className="flex flex-col sm:flex-row justify-end gap-2">
                     <button
                       onClick={() => setEditingMarkdown(null)}
-                      className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+                      className="w-full sm:w-auto px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={saveMarkdownChanges}
-                      className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                      className="w-full sm:w-auto px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
                     >
                       Save Changes
                     </button>
@@ -270,7 +274,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                       e.stopPropagation();
                       toggleSelect(String(question.id));
                     }}
-                    className="mt-1 text-gray-500 hover:text-blue-500 transition-colors"
+                    className="mt-1 text-gray-500 hover:text-blue-500 transition-colors flex-shrink-0"
                   >
                     {selectedQuestions.includes(String(question.id)) ? (
                       <CheckSquare className="w-5 h-5" />
@@ -278,13 +282,13 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                       <Square className="w-5 h-5" />
                     )}
                   </button>
-                  <div className="flex-grow">
+                  <div className="flex-grow min-w-0">
                     <div
                       className="cursor-pointer"
                       onClick={() => toggleExpand(String(question.id))}
                     >
                       <div className="flex flex-col space-y-2">
-                        <h3 className="text-lg font-semibold">{question.title}</h3>
+                        <h3 className="text-lg font-semibold break-all">{question.title}</h3>
                         <div className="text-sm text-gray-600">
                           Difficulty: {question.difficulty}
                         </div>
@@ -298,13 +302,13 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                             </span>
                           ))}
                         </div>
-                        <div className="flex justify-end space-x-2 mt-2">
+                        <div className="flex flex-col sm:flex-row justify-end gap-2 mt-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onEdit(question);
                             }}
-                            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                            className="w-full sm:w-auto px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                           >
                             Edit
                           </button>
@@ -313,7 +317,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                               e.stopPropagation();
                               handleEditMarkdown(question);
                             }}
-                            className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                            className="w-full sm:w-auto px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
                           >
                             Edit as MD
                           </button>
@@ -322,7 +326,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                               e.stopPropagation();
                               handleDelete(String(question.id));
                             }}
-                            className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                            className="w-full sm:w-auto px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                           >
                             Delete
                           </button>
@@ -335,17 +339,17 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                         <div className="space-y-4">
                           <div>
                             <p className="font-medium">Question:</p>
-                            <p className="ml-4 mt-1 whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-4 rounded max-w-full overflow-x-auto">
+                            <p className="ml-2 sm:ml-4 mt-1 whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-3 sm:p-4 rounded max-w-full overflow-x-auto">
                               {question.question}
                             </p>
                           </div>
                           <div>
                             <p className="font-medium">Answers:</p>
-                            <ul className="ml-8 list-disc space-y-1 mt-1">
+                            <ul className="ml-4 sm:ml-8 list-disc space-y-1 mt-1">
                               {question.answers.map((answer, index) => (
                                 <li 
                                   key={`answer-${question.id}-${index}`}
-                                  className={answer.isCorrect ? 'text-green-600 font-medium' : ''}
+                                  className={`${answer.isCorrect ? 'text-green-600 font-medium' : ''} break-words`}
                                 >
                                   {answer.text}
                                   {answer.isCorrect && ' (Correct)'}

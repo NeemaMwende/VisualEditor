@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
+import { ChevronDown, ArrowLeft, Shuffle, Settings } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,6 +13,12 @@ interface QuestionEditorProps {
   initialData?: EditorQuestion | Question;
   isEditing?: boolean;
   onSaveMarkdown?: (markdownData: MarkdownData) => void;
+}
+
+
+interface FormattingOptions {
+  enableCodeFormatting: boolean;
+  defaultLanguage: 'javascript' | 'html';
 }
 
 interface Answer {
@@ -30,6 +36,7 @@ export interface Question {
   title: string;
   markdownContent?: string;
   type?: 'question' | 'markdown';
+  codeLanguage?: 'javascript' | 'html'; 
 }
 
 interface FileData {
@@ -38,12 +45,7 @@ interface FileData {
   path: string;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({
-  onSave,
-  onBack,
-  initialData,
-  isEditing = false,
-}) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initialData, isEditing = false, }) => {
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
     { id: '1', text: '', isCorrect: false },
@@ -59,48 +61,139 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile] = useState<FileData | null>(null);
   const [title, setTitle] = useState(initialData?.title || '');
   const [isMarkdownSyncing, setIsMarkdownSyncing] = useState(false);
+  const [formattingOptions, setFormattingOptions] = useState<FormattingOptions>({
+    enableCodeFormatting: true,
+    defaultLanguage: (initialData as Question)?.codeLanguage || 'javascript'
+  });
+  const [answerOrder, setAnswerOrder] = useState<string[]>([]);
+
+  const FormattingControls = () => (
+    <div className="mb-6 p-2 sm:p-4 bg-gray-50 rounded-lg border">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
+        <div className="flex items-center gap-2">
+          <Settings size={20} className="text-gray-500" />
+          <h3 className="font-medium">Code Formatting Options</h3>
+        </div>
+      </div>
+      
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={formattingOptions.enableCodeFormatting}
+            onChange={(e) => {
+              const newFormattingState = e.target.checked;
+              setFormattingOptions((prev) => ({
+                ...prev,
+                enableCodeFormatting: newFormattingState,
+              }));
+              updateMarkdownFormatting(newFormattingState);
+            }}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+          />
+          <span className="text-sm">Enable automatic code formatting</span>
+        </label>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Default language:</span>
+          <select
+            value={formattingOptions.defaultLanguage}
+            onChange={(e) => setFormattingOptions(prev => ({
+              ...prev,
+              defaultLanguage: e.target.value as 'javascript' | 'html'
+            }))}
+            disabled={!formattingOptions.enableCodeFormatting}
+            className="text-sm border rounded p-1"
+          >
+            <option value="javascript">JavaScript</option>
+            <option value="html">HTML</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
 
   const currentMarkdown = useMemo(() => {
-    return generateMarkdown({
-      id: String(initialData?.id || Date.now()),
-      question,
-      answers,
-      difficulty,
-      tags,
-      title: title || currentFile?.name || ''
-    });
-  }, [question, answers, difficulty, tags, title, currentFile?.name, initialData?.id]);
+    const orderedAnswers = answerOrder.length > 0
+      ? answerOrder.map(id => answers.find(a => a.id === id)!)
+      : answers;
+
+    return generateMarkdown(
+      {
+        id: String(initialData?.id || Date.now()),
+        question,
+        answers: orderedAnswers,
+        difficulty,
+        tags,
+        title: title || '',
+        codeLanguage: formattingOptions.defaultLanguage
+      },
+      formattingOptions.enableCodeFormatting,
+      formattingOptions.defaultLanguage
+    );
+  }, [question, answers, difficulty, tags, title, initialData?.id, formattingOptions, answerOrder]);
+
+  useEffect(() => {
+    if (answers.length > 0 && answerOrder.length === 0) {
+      setAnswerOrder(answers.map(a => a.id));
+    }
+  }, [answers]);
 
   const randomizeAnswers = () => {
-    setAnswers(prevAnswers => {
-      const shuffledAnswers = [...prevAnswers];
-      for (let i = shuffledAnswers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
-      }
-      return shuffledAnswers;
-    });
+    const newOrder = [...answerOrder];
+    for (let i = newOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
+    }
+    setAnswerOrder(newOrder);
+  
+    // Reorder answers and update markdown
+    const reorderedAnswers = newOrder.map(id => answers.find(a => a.id === id)!);
+    setAnswers(reorderedAnswers);
+  
+    const updatedMarkdown = generateMarkdown(
+      {
+        id: initialData?.id || uuidv4(),
+        question,
+        answers: reorderedAnswers,
+        difficulty,
+        tags,
+        title,
+        codeLanguage: formattingOptions.defaultLanguage,
+      },
+      formattingOptions.enableCodeFormatting,
+      formattingOptions.defaultLanguage
+    );
+  
+    setMarkdownContent(updatedMarkdown);
   };
+  
 
   useEffect(() => {
     if (isEditing && initialData) {
       setQuestion(initialData.question || '');
-      setAnswers(
-        (initialData.answers || []).map((answer) => ({
-          id: answer.id || uuidv4(),
-          text: answer.text || "",
-          isCorrect: !!answer.isCorrect,
-        }))
-      );
+      const initialAnswers = (initialData.answers || []).map((answer) => ({
+        id: answer.id || uuidv4(),
+        text: answer.text || "",
+        isCorrect: !!answer.isCorrect,
+      }));
+      setAnswers(initialAnswers);
+      setAnswerOrder(initialAnswers.map(a => a.id));
       setDifficulty(initialData.difficulty || 1);
       setTitle(initialData.title || '');
       if (initialData.tags) {
         setTags(initialData.tags);
       }
       setMarkdownContent(initialData.markdownContent || '');
+      if ((initialData as Question).codeLanguage) {
+        setFormattingOptions(prev => ({
+          ...prev,
+          defaultLanguage: (initialData as Question).codeLanguage || 'javascript'
+        }));
+      }
     }
   }, [initialData, isEditing]);
-
 
   useEffect(() => {
     if (showMarkdown && !isMarkdownSyncing) {
@@ -108,11 +201,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   }, [showMarkdown, currentMarkdown, isMarkdownSyncing]);
 
+
  
   useEffect(() => {
     if (showMarkdown && markdownContent && !isMarkdownSyncing) {
       try {
-        const parsedData = parseMarkdownContent(markdownContent);
+        const parsedData = parseMarkdownContent(markdownContent, formattingOptions);
         if (parsedData) {
           setIsMarkdownSyncing(true);
           
@@ -124,6 +218,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
           setQuestion(parsedData.question.trim());
           setAnswers(updatedAnswers);
+          setAnswerOrder(updatedAnswers.map(a => a.id));
           setDifficulty(parsedData.difficulty);
           setTags(parsedData.tags);
           
@@ -140,6 +235,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setMarkdownContent(newContent);
   };
 
+
   const handleSave = () => {
     if (!title.trim()) {
       if (currentFile?.name) {
@@ -154,24 +250,33 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       }
     }
 
-    const updatedMarkdown = generateMarkdown({
-      id: initialData?.id || uuidv4(),
-      question,
-      answers,
-      difficulty,
-      tags,
-      title,
-    });
+    const orderedAnswers = answerOrder.map((id) => answers.find((a) => a.id === id)!);
+
+    // Regenerate markdown with the current formatting preference
+    const updatedMarkdown = generateMarkdown(
+      {
+        id: initialData?.id || uuidv4(),
+        question,
+        answers: orderedAnswers,
+        difficulty,
+        tags,
+        title,
+        codeLanguage: formattingOptions.defaultLanguage,
+      },
+      formattingOptions.enableCodeFormatting, 
+      formattingOptions.defaultLanguage
+    );
   
     const savedData: Question = {
       id: initialData?.id || uuidv4(),
       question,
-      answers,
+      answers: orderedAnswers,
       difficulty,
       tags,
       title,
       type: 'question',
       markdownContent: updatedMarkdown,
+      codeLanguage: formattingOptions.defaultLanguage,
     };
   
     try {
@@ -184,7 +289,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         : [...existingQuestions, savedData];
   
       localStorage.setItem("questions", JSON.stringify(updatedQuestions));
-  
       alert("Saved successfully!");
       onSave(savedData);
     } catch (error) {
@@ -193,6 +297,24 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
 
+  const updateMarkdownFormatting = (enableFormatting: boolean) => {
+    const updatedMarkdown = generateMarkdown(
+      {
+        id: initialData?.id || uuidv4(),
+        question,
+        answers,
+        difficulty,
+        tags,
+        title,
+        codeLanguage: formattingOptions.defaultLanguage,
+      },
+      enableFormatting,
+      formattingOptions.defaultLanguage
+    );
+  
+    setMarkdownContent(updatedMarkdown);
+  };
+  
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
       const confirm = window.confirm('You have unsaved changes. Are you sure you want to go back?');
@@ -202,18 +324,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
+    <div className="w-full max-w-4xl mx-auto p-2 sm:p-4">
       <div className="mb-4">
         <button
           onClick={handleBack}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
         >
           <ArrowLeft size={20} />
-          Back to Questions
+          <span className="hidden sm:inline">Back to Questions</span>
         </button>
       </div>
 
-      <div className="bg-white shadow-sm form-content p-6 rounded-lg space-y-6">
+      <div className="bg-white shadow-sm form-content p-3 sm:p-6 rounded-lg space-y-4 sm:space-y-6">
+        <FormattingControls />
+        
         {showMarkdown ? (
           <div className="space-y-4">
             <label className="block text-gray-700 text-sm font-bold">
@@ -227,7 +351,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
             />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
               <label className="block text-gray-700 text-sm font-bold">
                 Title
@@ -237,7 +361,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 placeholder="Enter question title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 readOnly={!!currentFile}
               />
             </div>
@@ -250,7 +374,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(parseInt(e.target.value))}
-                  className="w-full p-3 border rounded-md appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  className="w-full p-2 sm:p-3 border rounded-md appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
                   <option value={1}>Beginner (Level 1)</option>
                   <option value={2}>Intermediate (Level 2)</option>
@@ -281,26 +405,26 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
                 placeholder="Enter your question here"
               />
             </div>
 
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <label className="block text-gray-700 text-sm font-bold">
                   Answers
                 </label>
                 <button
                   onClick={randomizeAnswers}
-                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors w-full sm:w-auto justify-center sm:justify-start"
                 >
                   <Shuffle size={16} />
                   Randomize Answers
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {answers.map((answer, index) => (
                   <div key={answer.id} className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -313,14 +437,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                             isCorrect: i === index
                           }));
                           setAnswers(newAnswers);
-                          setMarkdownContent(generateMarkdown({
-                            id: initialData?.id || uuidv4(),
-                            question,
-                            answers: newAnswers,
-                            difficulty,
-                            tags,
-                            title,
-                          }));
                         }}
                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
@@ -335,7 +451,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         newAnswers[index] = { ...answer, text: e.target.value };
                         setAnswers(newAnswers);
                       }}
-                      className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={2}
                       placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
                     />
@@ -346,22 +462,22 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-6 border-t">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t">
           <button
             onClick={handleBack}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="w-full sm:w-auto px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             Cancel
           </button>
           <button
             onClick={() => setShowMarkdown(!showMarkdown)}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="w-full sm:w-auto px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             {showMarkdown ? 'Edit Question' : 'View Markdown'}
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
+            className="w-full sm:w-auto px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
           >
             {isEditing ? 'Save Changes' : 'Save Question'}
           </button>
