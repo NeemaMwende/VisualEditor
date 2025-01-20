@@ -26,7 +26,7 @@ export interface FormattingOptions {
   defaultLanguage: 'javascript' | 'html';
 }
 
-const isActualCode = (text: string): { isCode: boolean; language: string } => {
+const isActualCode = (text: string): { isCode: boolean; language: 'javascript' | 'html' | '' } => {
   const jsPatterns = [
     /\b(const|let|var|function)\s+\w+\s*=?\s*(\(.*\))?\s*(=>|\{)/,
     /\bclass\s+\w+/,
@@ -51,16 +51,12 @@ const isActualCode = (text: string): { isCode: boolean; language: string } => {
   return { isCode: false, language: '' };
 };
 
-
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
   defaultLanguage: 'javascript' | 'html' = 'javascript',
-  enableCodeFormatting?: boolean,
+  //enableCodeFormatting?: boolean,
 ): string => {
-  const codeBlockStart = enableCodeFormatting ? `\`\`\`${defaultLanguage}` : '';
-  const codeBlockEnd = enableCodeFormatting ? '```' : '';
-
   if (!question || typeof question !== 'object') return '';
 
   try {
@@ -68,7 +64,7 @@ export const generateMarkdown = (
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
-   // md += `language: ${question.codeLanguage || defaultLanguage}\n`; 
+    md += `language: ${question.codeLanguage || defaultLanguage}\n`; 
     md += '---\n\n';
 
     const lines = question.question.split('\n');
@@ -82,9 +78,9 @@ export const generateMarkdown = (
       
       if (!isCollectingCode && enableFormatting) {
         const { isCode, language } = isActualCode(trimmedLine);
-        if (isCode) {
+        if (isCode && (language === 'javascript' || language === 'html')) {
           isCollectingCode = true;
-          currentCodeLanguage = language || defaultLanguage;
+          currentCodeLanguage = language;
           if (processedQuestion) processedQuestion += '\n\n';
           codeBuffer = line + '\n';
           continue;
@@ -118,9 +114,8 @@ export const generateMarkdown = (
           const answerText = answer.text.trim();
           const { isCode, language } = isActualCode(answerText);
           
-          if (isCode && enableFormatting) {
-            const codeLanguage = language || defaultLanguage;
-            md += `\`\`\`${codeLanguage}\n${answerText}\n\`\`\`\n\n`;
+          if (isCode && language && enableFormatting) {
+            md += `\`\`\`${language}\n${answerText}\n\`\`\`\n\n`;
           } else {
             md += `${answerText}\n\n`;
           }
@@ -139,7 +134,7 @@ export const parseMarkdownContent = (
   content: string,
   formattingOptions: FormattingOptions = {
     enableCodeFormatting: true,
-    defaultLanguage: 'javascript'
+    defaultLanguage: 'javascript',
   }
 ): {
   title: string;
@@ -148,6 +143,7 @@ export const parseMarkdownContent = (
   difficulty: number;
   tags: string[];
   markdownContent: string;
+  codeLanguage: 'javascript' | 'html';
 } => {
   if (!content || typeof content !== 'string') {
     return {
@@ -156,16 +152,17 @@ export const parseMarkdownContent = (
       answers: Array(4).fill({ id: '', text: '', isCorrect: false }),
       difficulty: 1,
       tags: [],
-      markdownContent: ''
+      markdownContent: '',
+      codeLanguage: formattingOptions.defaultLanguage,
     };
   }
 
   try {
-    let codeLanguage: 'javascript' | 'html' = formattingOptions.defaultLanguage;
+    let detectedLanguage: 'javascript' | 'html' = formattingOptions.defaultLanguage;
 
     const languageMatch = content.match(/language:\s*(javascript|html)/);
     if (languageMatch && (languageMatch[1] === 'javascript' || languageMatch[1] === 'html')) {
-      codeLanguage = languageMatch[1];
+      detectedLanguage = languageMatch[1];
     }
 
     const lines = content.split('\n');
@@ -181,7 +178,8 @@ export const parseMarkdownContent = (
       answers: [] as Array<{ id: string; text: string; isCorrect: boolean }>,
       difficulty: 1,
       tags: [] as string[],
-      markdownContent: content
+      markdownContent: content,
+      codeLanguage: detectedLanguage,
     };
 
     for (const line of lines) {
@@ -227,7 +225,7 @@ export const parseMarkdownContent = (
           parsedData.answers.push({
             id: (parsedData.answers.length + 1).toString(),
             text: currentContent.trim(),
-            isCorrect: currentSection.includes('Correct')
+            isCorrect: currentSection.includes('Correct'),
           });
           currentContent = '';
         }
@@ -246,7 +244,7 @@ export const parseMarkdownContent = (
       parsedData.answers.push({
         id: (parsedData.answers.length + 1).toString(),
         text: currentContent.trim(),
-        isCorrect: currentSection.includes('Correct')
+        isCorrect: currentSection.includes('Correct'),
       });
     }
 
@@ -254,7 +252,7 @@ export const parseMarkdownContent = (
       parsedData.answers.push({
         id: (parsedData.answers.length + 1).toString(),
         text: '',
-        isCorrect: false
+        isCorrect: false,
       });
     }
 
@@ -267,11 +265,11 @@ export const parseMarkdownContent = (
       answers: Array(4).fill({ id: '', text: '', isCorrect: false }),
       difficulty: 1,
       tags: [],
-      markdownContent: content
+      markdownContent: content,
+      codeLanguage: formattingOptions.defaultLanguage,
     };
   }
 };
-
 
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {

@@ -148,7 +148,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         }
       }
   
-      // Write the updated content to the existing file
       const writable = await fileHandle.createWritable();
       await writable.write(editingMarkdown.content);
       await writable.close();
