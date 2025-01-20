@@ -122,7 +122,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     return generateMarkdown(
       {
         id: String(initialData?.id || Date.now()),
-        question,
+        question: question.trim(),
         answers: orderedAnswers,
         difficulty,
         tags,

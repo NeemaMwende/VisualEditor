@@ -55,7 +55,6 @@ export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
   defaultLanguage: 'javascript' | 'html' = 'javascript',
-  //enableCodeFormatting?: boolean,
 ): string => {
   if (!question || typeof question !== 'object') return '';
 
@@ -64,10 +63,12 @@ export const generateMarkdown = (
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
-    md += `language: ${question.codeLanguage || defaultLanguage}\n`; 
     md += '---\n\n';
 
-    const lines = question.question.split('\n');
+    
+    const questionText = question.question.split('?')[0] + '?';
+    
+    const lines = questionText.split('\n');
     let processedQuestion = '';
     let codeBuffer = '';
     let isCollectingCode = false;
