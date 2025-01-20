@@ -142,20 +142,28 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
     }
     setAnswerOrder(newOrder);
-    
-    // Update markdown content with new order
+  
+    // Reorder answers and update markdown
     const reorderedAnswers = newOrder.map(id => answers.find(a => a.id === id)!);
-    const updatedMarkdown = generateMarkdown({
-      id: initialData?.id || uuidv4(),
-      question,
-      answers: reorderedAnswers,
-      difficulty,
-      tags,
-      title,
-      codeLanguage: formattingOptions.defaultLanguage
-    }, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage);
+    setAnswers(reorderedAnswers);
+  
+    const updatedMarkdown = generateMarkdown(
+      {
+        id: initialData?.id || uuidv4(),
+        question,
+        answers: reorderedAnswers,
+        difficulty,
+        tags,
+        title,
+        codeLanguage: formattingOptions.defaultLanguage,
+      },
+      formattingOptions.enableCodeFormatting,
+      formattingOptions.defaultLanguage
+    );
+  
     setMarkdownContent(updatedMarkdown);
   };
+  
 
   useEffect(() => {
     if (isEditing && initialData) {
@@ -237,47 +245,50 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       }
     }
 
-    const orderedAnswers = answerOrder.map(id => answers.find(a => a.id === id)!);
-    const updatedMarkdown = generateMarkdown({
+    const reorderedAnswers = answerOrder.map(id => answers.find(a => a.id === id)!);
+  const updatedMarkdown = generateMarkdown(
+    {
       id: initialData?.id || uuidv4(),
       question,
-      answers: orderedAnswers,
+      answers: reorderedAnswers,
       difficulty,
       tags,
       title,
-      codeLanguage: formattingOptions.defaultLanguage
-    }, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage);
-  
-    const savedData: Question = {
-      id: initialData?.id || uuidv4(),
-      question,
-      answers: orderedAnswers,
-      difficulty,
-      tags,
-      title,
-      type: 'question',
-      markdownContent: updatedMarkdown,
-      codeLanguage: formattingOptions.defaultLanguage
-    };
-  
-    try {
-      const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
-  
-      const updatedQuestions = isEditing
-        ? existingQuestions.map((q: Question) =>
-            q.id === initialData?.id ? savedData : q
-          )
-        : [...existingQuestions, savedData];
-  
-      localStorage.setItem("questions", JSON.stringify(updatedQuestions));
-  
-      alert("Saved successfully!");
-      onSave(savedData);
-    } catch (error) {
-      console.error("Error saving:", error);
-      alert("Failed to save. Please try again.");
-    }
+      codeLanguage: formattingOptions.defaultLanguage,
+    },
+    formattingOptions.enableCodeFormatting,
+    formattingOptions.defaultLanguage
+  );
+
+  const savedData: Question = {
+    id: initialData?.id || uuidv4(),
+    question,
+    answers: reorderedAnswers,
+    difficulty,
+    tags,
+    title,
+    type: 'question',
+    markdownContent: updatedMarkdown,
+    codeLanguage: formattingOptions.defaultLanguage,
   };
+
+  try {
+    const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
+
+    const updatedQuestions = isEditing
+      ? existingQuestions.map((q: Question) =>
+          q.id === initialData?.id ? savedData : q
+        )
+      : [...existingQuestions, savedData];
+
+    localStorage.setItem("questions", JSON.stringify(updatedQuestions));
+    alert("Saved successfully!");
+    onSave(savedData);
+  } catch (error) {
+    console.error("Error saving:", error);
+    alert("Failed to save. Please try again.");
+  }
+};
 
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
