@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ArrowLeft, Shuffle } from 'lucide-react';
+import { ChevronDown, ArrowLeft, Shuffle, Settings } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,6 +13,12 @@ interface QuestionEditorProps {
   initialData?: EditorQuestion | Question;
   isEditing?: boolean;
   onSaveMarkdown?: (markdownData: MarkdownData) => void;
+}
+
+
+interface FormattingOptions {
+  enableCodeFormatting: boolean;
+  defaultLanguage: 'javascript' | 'html';
 }
 
 interface Answer {
@@ -59,17 +65,68 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [currentFile] = useState<FileData | null>(null);
   const [title, setTitle] = useState(initialData?.title || '');
   const [isMarkdownSyncing, setIsMarkdownSyncing] = useState(false);
+  const [formattingOptions, setFormattingOptions] = useState<FormattingOptions>({
+    enableCodeFormatting: true,
+    defaultLanguage: 'javascript'
+  });
+
+  const FormattingControls = () => (
+    <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Settings size={20} className="text-gray-500" />
+          <h3 className="font-medium">Code Formatting Options</h3>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-6">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={formattingOptions.enableCodeFormatting}
+            onChange={(e) => setFormattingOptions(prev => ({
+              ...prev,
+              enableCodeFormatting: e.target.checked
+            }))}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+          />
+          <span className="text-sm">Enable automatic code formatting</span>
+        </label>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Default language:</span>
+          <select
+            value={formattingOptions.defaultLanguage}
+            onChange={(e) => setFormattingOptions(prev => ({
+              ...prev,
+              defaultLanguage: e.target.value as 'javascript' | 'html'
+            }))}
+            disabled={!formattingOptions.enableCodeFormatting}
+            className="text-sm border rounded p-1"
+          >
+            <option value="javascript">JavaScript</option>
+            <option value="html">HTML</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
 
   const currentMarkdown = useMemo(() => {
-    return generateMarkdown({
-      id: String(initialData?.id || Date.now()),
-      question,
-      answers,
-      difficulty,
-      tags,
-      title: title || currentFile?.name || ''
-    });
-  }, [question, answers, difficulty, tags, title, currentFile?.name, initialData?.id]);
+    return generateMarkdown(
+      {
+        id: String(initialData?.id || Date.now()),
+        question,
+        answers,
+        difficulty,
+        tags,
+        title: title || currentFile?.name || ''
+      },
+      formattingOptions.enableCodeFormatting,
+      formattingOptions.defaultLanguage
+    );
+  }, [question, answers, difficulty, tags, title, currentFile?.name, initialData?.id, formattingOptions]);
+
 
   const randomizeAnswers = () => {
     setAnswers(prevAnswers => {
@@ -214,6 +271,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       </div>
 
       <div className="bg-white shadow-sm form-content p-6 rounded-lg space-y-6">
+      <FormattingControls /> 
         {showMarkdown ? (
           <div className="space-y-4">
             <label className="block text-gray-700 text-sm font-bold">
