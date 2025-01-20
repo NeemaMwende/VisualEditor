@@ -50,29 +50,6 @@ const detectCodeLanguage = (code: string): string => {
   return 'javascript';
 };
 
-// const wrapCodeForMarkdown = (text: string): string => {
-//   if (!text || typeof text !== 'string') return '';
-  
-//   const trimmedText = text.trim();
-//   if (!trimmedText) return '';
-
-//   const isCode = isActualCode(trimmedText);
-//   if (isCode) {
-//     const language = detectCodeLanguage(trimmedText);
-//     return `\`\`\`${language}\n${trimmedText}\n\`\`\``;
-//   }
-//   return trimmedText;
-// };
-
-// const unwrapCodeForDisplay = (text: string): string => {
-//   if (!text || typeof text !== 'string') return '';
-  
-//   return text.replace(/```[\w]*\n([\s\S]*?)\n```/g, (match, code) => {
-//     const language = detectCodeLanguage(code.trim());
-//     return language ? match : code.trim();
-//   });
-// };
-
 export const generateMarkdown = (question: BaseQuestion): string => {
   if (!question || typeof question !== 'object') return '';
 
