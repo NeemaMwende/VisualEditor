@@ -34,6 +34,7 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
     /=>\s*{|\(\)\s*=>/,
     /\b(if|for|while|switch|return)\b/,
     /\b(try|catch|finally)\b/,
+    /\b(async|await)\b/,
     /\.\w+\(/,
     /new\s+\w+/
   ];
@@ -56,21 +57,20 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
   return { isCode: false, language: '' };
 };
 
-const formatCodeBlock = (code: string, language: string): string => {
-  if (!code.trim()) return code;
+// const formatCodeBlock = (code: string, language: string): string => {
+//   if (!code.trim()) return code;
 
-  code = code.replace(/```[\w-]*\n|```$/g, '');
+//   code = code.replace(/```[\w-]*\n|```$/g, '');
   
-  const lines = code.split('\n').map(line => line.trim()).filter(Boolean);
-  let formattedCode = lines.join('\n');
+//   const lines = code.split('\n').map(line => line.trim()).filter(Boolean);
+//   let formattedCode = lines.join('\n');
 
-  if (!formattedCode.startsWith('```')) {
-    formattedCode = `\`\`\`${language}\n${formattedCode}\n\`\`\``;
-  }
+//   if (!formattedCode.startsWith('```')) {
+//     formattedCode = `\`\`\`${language}\n${formattedCode}\n\`\`\``;
+//   }
 
-  return formattedCode;
-};
-
+//   return formattedCode;
+// };
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
@@ -83,63 +83,56 @@ export const generateMarkdown = (
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
-    //md += `language: ${defaultLanguage}\n`;
     md += '---\n\n';
 
     const questionLines = question.question.split('\n');
     let processedQuestion = '';
-    let codeBuffer = '';
-    let isInCodeBlock = false;
-
+    //let codeContent = '';
+    let inQuestionText = true;
+    
     for (const line of questionLines) {
       const trimmedLine = line.trim();
       
       if (enableFormatting) {
-        if (trimmedLine.startsWith('```')) {
-          isInCodeBlock = !isInCodeBlock;
-          if (!isInCodeBlock && codeBuffer) {
-            processedQuestion += formatCodeBlock(codeBuffer, defaultLanguage) + '\n\n';
-            codeBuffer = '';
+        const { isCode } = isCodeBlock(trimmedLine);
+        
+        if (isCode && inQuestionText) {
+          if (processedQuestion) {
+            processedQuestion += '\n';
           }
-          continue;
+          processedQuestion += `\`\`\`${defaultLanguage}\n`;
+          inQuestionText = false;
         }
-
-        if (isInCodeBlock) {
-          codeBuffer += line + '\n';
-          continue;
+        
+        if (!inQuestionText || isCode) {
+          processedQuestion += line + '\n';
+        } else {
+          processedQuestion += line + '\n';
         }
-
-        const { isCode, language } = isCodeBlock(trimmedLine);
-        if (isCode) {
-          if (processedQuestion && !processedQuestion.endsWith('\n\n')) {
-            processedQuestion += '\n\n';
-          }
-          processedQuestion += formatCodeBlock(trimmedLine, language || defaultLanguage) + '\n\n';
-          continue;
+      } else {
+        if (trimmedLine) {
+          processedQuestion += line + '\n';
         }
-      }
-
-      if (trimmedLine) {
-        processedQuestion += line + '\n';
       }
     }
 
-    if (codeBuffer) {
-      processedQuestion += formatCodeBlock(codeBuffer, defaultLanguage) + '\n\n';
+    if (!inQuestionText) {
+      processedQuestion += '```\n';
     }
 
     md += processedQuestion.trim() + '\n\n';
 
+    // Process answers
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
-          md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
+          md += `# ${answer.isCorrect ? 'Correct' : ''}\n`;
           const answerText = answer.text.trim();
 
           if (enableFormatting) {
-            const { isCode, language } = isCodeBlock(answerText);
+            const { isCode } = isCodeBlock(answerText);
             if (isCode) {
-              md += formatCodeBlock(answerText, language || defaultLanguage) + '\n\n';
+              md += `\`\`\`${defaultLanguage}\n${answerText}\n\`\`\`\n\n`;
             } else {
               md += `${answerText}\n\n`;
             }
@@ -156,7 +149,6 @@ export const generateMarkdown = (
     return '';
   }
 };
-
 export const parseMarkdownContent = (
   content: string,
   formattingOptions: FormattingOptions = {
