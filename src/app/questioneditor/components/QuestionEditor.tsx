@@ -37,6 +37,7 @@ export interface Question {
   markdownContent?: string;
   type?: 'question' | 'markdown';
   codeLanguage?: 'javascript' | 'html'; 
+  enableCodeFormatting?: boolean;
 }
 
 interface FileData {
@@ -249,10 +250,10 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
         return;
       }
     }
-
+  
     const orderedAnswers = answerOrder.map((id) => answers.find((a) => a.id === id)!);
-
-    // Regenerate markdown with the current formatting preference
+  
+    // Generate markdown with the current formatting preference
     const updatedMarkdown = generateMarkdown(
       {
         id: initialData?.id || uuidv4(),
@@ -262,8 +263,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
         tags,
         title,
         codeLanguage: formattingOptions.defaultLanguage,
+        enableCodeFormatting: formattingOptions.enableCodeFormatting // Pass the formatting preference
       },
-      formattingOptions.enableCodeFormatting, 
+      formattingOptions.enableCodeFormatting,
       formattingOptions.defaultLanguage
     );
   
@@ -277,6 +279,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       type: 'question',
       markdownContent: updatedMarkdown,
       codeLanguage: formattingOptions.defaultLanguage,
+      enableCodeFormatting: formattingOptions.enableCodeFormatting // Save the formatting preference
     };
   
     try {
@@ -296,6 +299,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       alert("Failed to save. Please try again.");
     }
   };
+  
 
   const updateMarkdownFormatting = (enableFormatting: boolean) => {
     const updatedMarkdown = generateMarkdown(

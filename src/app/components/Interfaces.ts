@@ -25,6 +25,7 @@ export interface BaseQuestion {
   onEditMarkdown?: (markdown: MarkdownData) => void;
   codeLanguage?: 'javascript' | 'html';
   markdownContent?: string;
+  enableCodeFormatting?: boolean;
 }
 
 export interface QuestionData extends BaseQuestion {

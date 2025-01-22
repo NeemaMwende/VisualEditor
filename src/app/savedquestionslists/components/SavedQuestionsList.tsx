@@ -106,8 +106,9 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const handleEditMarkdown = (question: DashboardQuestion) => {
     const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
     
-    const markdownContent = generateMarkdown(question,
-      question.enableCodeFormatting || false,
+    const markdownContent = generateMarkdown(
+      question,
+      question.enableCodeFormatting ?? false, // Use the saved preference
       question.codeLanguage || 'javascript'
     );
     setEditingMarkdown({
@@ -117,6 +118,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       originalTitle: question.title
     });
   };
+  
 
   const saveMarkdownChanges = async () => {
     if (!fileSystem.handle || !editingMarkdown) {
@@ -125,14 +127,14 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     }
   
     try {
-      const parsedData = parseMarkdownContent(editingMarkdown.content) as ParsedMarkdownData;
+      const originalQuestion = questions.find(q => q.id === editingMarkdown.id);
+      const parsedData = parseMarkdownContent(editingMarkdown.content, {
+        enableCodeFormatting: originalQuestion?.enableCodeFormatting ?? false,
+        defaultLanguage: originalQuestion?.codeLanguage || 'javascript'
+      }) as ParsedMarkdownData;
+  
       if (!parsedData) {
         throw new Error('Invalid markdown format');
-      }
-  
-      const originalQuestion = questions.find(q => q.id === editingMarkdown.id);
-      if (!originalQuestion) {
-        throw new Error('Question not found');
       }
   
       const updatedTitle = parsedData.title || editingMarkdown.originalTitle;
@@ -166,7 +168,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                 difficulty: parsedData.difficulty,
                 tags: parsedData.tags,
                 markdownContent: editingMarkdown.content,
-                enableCodeFormatting: parsedData.enableCodeFormatting,
+                enableCodeFormatting: originalQuestion?.enableCodeFormatting, // Preserve the original formatting preference
                 type: 'question'
               }
             : q
