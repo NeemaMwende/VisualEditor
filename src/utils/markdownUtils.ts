@@ -43,8 +43,7 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
     /<[a-zA-Z][^>]*>/,
     /<\/[a-zA-Z][^>]*>/,
     /<[^>]+\/>/,
-    /<!DOCTYPE/i,
-    /<(div|span|p|a|button|input|form|label)/i
+    /<(div|span|p|a|button|input|form|label|!DOCTYPE)/i
   ];
 
   if (text.includes('```')) return { isCode: true, language: '' };
