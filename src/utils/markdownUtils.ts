@@ -35,7 +35,7 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
     /\b(if|for|while|switch|return)\b/,
     /\b(try|catch|finally)\b/,
     /\b(async|await)\b/,
-    /\b(useHash|pushState|useHTML5|pushState)\b/,
+    ///\b(useHash|pushState|useHTML5|pushState)\b/,
     /\.\w+\(/,
     /new\s+\w+/
   ];
@@ -86,6 +86,7 @@ export const generateMarkdown = (
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
 
+    
     const questionLines = question.question.split('\n');
     let processedQuestion = '';
     //let codeContent = '';
@@ -156,7 +157,7 @@ export const parseMarkdownContent = (
     enableCodeFormatting: true,
     defaultLanguage: 'javascript',
   }
-): {
+  ): {
   title: string;
   question: string;
   answers: Array<{ id: string; text: string; isCorrect: boolean }>;
