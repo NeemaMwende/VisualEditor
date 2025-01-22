@@ -35,6 +35,7 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
     /\b(if|for|while|switch|return)\b/,
     /\b(try|catch|finally)\b/,
     /\b(async|await)\b/,
+    /\b(useHash|pushState|useHTML5|pushState)\b/,
     /\.\w+\(/,
     /new\s+\w+/
   ];
@@ -55,6 +56,7 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
   if (htmlMatches > 0) return { isCode: true, language: 'html' };
   return { isCode: false, language: '' };
 };
+
 
 // const formatCodeBlock = (code: string, language: string): string => {
 //   if (!code.trim()) return code;
@@ -162,6 +164,7 @@ export const parseMarkdownContent = (
   tags: string[];
   markdownContent: string;
   codeLanguage: 'javascript' | 'html';
+  enableCodeFormatting?: boolean;
 } => {
   if (!content || typeof content !== 'string') {
     return {
@@ -172,6 +175,7 @@ export const parseMarkdownContent = (
       tags: [],
       markdownContent: '',
       codeLanguage: formattingOptions.defaultLanguage,
+      enableCodeFormatting: formattingOptions.enableCodeFormatting
     };
   }
 
@@ -272,7 +276,11 @@ export const parseMarkdownContent = (
       });
     }
 
-    return parsedData;
+    
+    return {
+      ...parsedData,
+      enableCodeFormatting: formattingOptions.enableCodeFormatting
+    };
   } catch (error) {
     console.error('Error parsing markdown:', error);
     return {
@@ -283,6 +291,7 @@ export const parseMarkdownContent = (
       tags: [],
       markdownContent: content,
       codeLanguage: formattingOptions.defaultLanguage,
+      enableCodeFormatting: formattingOptions.enableCodeFormatting
     };
   }
 };
