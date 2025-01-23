@@ -26,27 +26,25 @@ export interface FormattingOptions {
   defaultLanguage: 'javascript' | 'html';
 }
 
-const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 'html' | '' } => {
+const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 'html' | '' } => {
   const jsPatterns = [
-    /\b(const|let|var|function)\s+\w+/,
-    /\bclass\s+\w+/,
-    /\b(import|export)\b/,
-    /=>\s*{|\(\)\s*=>/,
-    /\b(if|for|while|switch|return)\b/,
-    /\b(try|catch|finally)\b/,
-    /\b(async|await)\b/,
-    /\.\w+\(/,
-    /new\s+\w+/
+    /^(const|let|var|function)\s+\w+/,
+    /^(export\s+)?(class)\s+\w+/,
+    /^(import|export)\b/,
+    /^const\s+\w+\s*=\s*\(.*\)\s*=>\s*{/,
+    /^(if|for|while|switch|return)\b/,
+    /^(try|catch|finally)\b/,
+    /^(async|await)\b/,
+    /^\w+\.\w+\(/,
+    /^new\s+\w+/
   ];
 
   const htmlPatterns = [
-    /<[a-zA-Z][^>]*>/,
-    /<\/[a-zA-Z][^>]*>/,
-    /<[^>]+\/>/,
-    /<(div|span|p|a|button|input|form|label|!DOCTYPE)/i
+    /^<[a-zA-Z][^>]*>/,
+    /^<\/[a-zA-Z][^>]*>/,
+    /^<[^>]+\/>/,
+    /^<(div|span|p|a|button|input|form|label|!DOCTYPE)/i
   ];
-
-  if (text.includes('```')) return { isCode: true, language: '' };
 
   const jsMatches = jsPatterns.filter(pattern => pattern.test(text)).length;
   const htmlMatches = htmlPatterns.filter(pattern => pattern.test(text)).length;
@@ -72,38 +70,31 @@ export const generateMarkdown = (
 
     const questionLines = question.question.split('\n');
     let processedQuestion = '';
-    let inQuestionText = true;
+    let inCodeBlock = false;
     
     for (const line of questionLines) {
       const trimmedLine = line.trim();
+      const { isCode, language } = isStrictCodeBlock(trimmedLine);
     
       if (enableFormatting) {
-        const { isCode } = isCodeBlock(trimmedLine);
+        // Only start a code block if the line is actually code
+        if (isCode && !inCodeBlock) {
+          processedQuestion += `\`\`\`${language || defaultLanguage}\n`;
+          inCodeBlock = true;
+        } else if (!isCode && inCodeBlock) {
+          processedQuestion += '```\n';
+          inCodeBlock = false;
+        }
+      }
     
-        // Ensure code wrapping applies only to actual code, not plain text
-        if (isCode && inQuestionText) {
-          if (processedQuestion) {
-            processedQuestion += '\n';
-          }
-          processedQuestion += `\`\`\`${defaultLanguage}\n`;
-          inQuestionText = false;
-        }
-    
-        if (!inQuestionText || isCode) {
-          processedQuestion += line + '\n';
-        } else {
-          // For plain text questions, just append the text without wrapping
-          processedQuestion += line + '\n';
-        }
-      } else {
-        if (trimmedLine) {
-          processedQuestion += line + '\n';
-        }
+      // If in code block or line is not code, add the line
+      if (inCodeBlock || !enableFormatting || !isStrictCodeBlock(trimmedLine).isCode) {
+        processedQuestion += line + '\n';
       }
     }
     
-    // Close code block only if it was opened
-    if (!inQuestionText) {
+    // Close code block if still open
+    if (inCodeBlock) {
       processedQuestion += '```\n';
     }
     
@@ -117,12 +108,32 @@ export const generateMarkdown = (
           const answerText = answer.text.trim();
 
           if (enableFormatting) {
-            const { isCode } = isCodeBlock(answerText);
-            if (isCode) {
-              md += `\`\`\`${defaultLanguage}\n${answerText}\n\`\`\`\n\n`;
-            } else {
-              md += `${answerText}\n\n`;
+            const lines = answerText.split('\n');
+            let processedAnswer = '';
+            let inAnswerCodeBlock = false;
+
+            for (const line of lines) {
+              const trimmedLine = line.trim();
+              const { isCode, language } = isStrictCodeBlock(trimmedLine);
+
+              if (isCode && !inAnswerCodeBlock) {
+                processedAnswer += `\`\`\`${language || defaultLanguage}\n`;
+                inAnswerCodeBlock = true;
+              } else if (!isCode && inAnswerCodeBlock) {
+                processedAnswer += '```\n';
+                inAnswerCodeBlock = false;
+              }
+
+              if (inAnswerCodeBlock || !isCode) {
+                processedAnswer += line + '\n';
+              }
             }
+
+            if (inAnswerCodeBlock) {
+              processedAnswer += '```\n';
+            }
+
+            md += processedAnswer.trim() + '\n\n';
           } else {
             md += `${answerText}\n\n`;
           }
@@ -211,22 +222,22 @@ export const parseMarkdownContent = (
 
       // Strict handling of code blocks
       if (trimmedLine.startsWith('```')) {
+        const languageMatch = trimmedLine.match(/```(javascript|html)?/);
         isInCodeBlock = !isInCodeBlock;
+        
         if (!isInCodeBlock && codeBuffer) {
           if (currentSection === '') {
-            // Only add code block if it's a code-specific question
-            const { isCode } = isCodeBlock(codeBuffer);
+            // Only add code block if it contains actual code
+            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
             if (isCode) {
-              parsedData.question += codeBuffer;
+              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
             } else {
-              // For non-code content, remove code block markers
               parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
             }
           } else {
-            // Similar handling for answers
-            const { isCode } = isCodeBlock(codeBuffer);
+            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
             if (isCode) {
-              currentContent += codeBuffer;
+              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
             } else {
               currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
             }
@@ -296,6 +307,7 @@ export const parseMarkdownContent = (
   }
 };
 
+// Remaining utility functions (saveMarkdownToLocalStorage, etc.) stay the same
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {
     localStorage.setItem('markdownFiles', JSON.stringify(files));
@@ -314,6 +326,7 @@ export const getMarkdownFromLocalStorage = (): MarkdownFile[] => {
   }
 };
 
+// ... (rest of the functions remain the same)
 export const addNewMarkdownFile = (
   markdownFiles: MarkdownFile[],
   content: string,
