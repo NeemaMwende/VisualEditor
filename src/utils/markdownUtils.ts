@@ -77,7 +77,6 @@ export const generateMarkdown = (
       const { isCode, language } = isStrictCodeBlock(trimmedLine);
     
       if (enableFormatting) {
-        // Only start a code block if the line is actually code
         if (isCode && !inCodeBlock) {
           processedQuestion += `\`\`\`${language || defaultLanguage}\n`;
           inCodeBlock = true;
@@ -87,13 +86,11 @@ export const generateMarkdown = (
         }
       }
     
-      // If in code block or line is not code, add the line
       if (inCodeBlock || !enableFormatting || !isStrictCodeBlock(trimmedLine).isCode) {
         processedQuestion += line + '\n';
       }
     }
     
-    // Close code block if still open
     if (inCodeBlock) {
       processedQuestion += '```\n';
     }
@@ -104,11 +101,11 @@ export const generateMarkdown = (
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
-          md += `# ${answer.isCorrect ? 'Correct' : ''}\n`;
+          md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
           const answerText = answer.text.trim();
 
           if (enableFormatting) {
-            const lines = answerText.split('\n');
+            const lines = answerText.split('\n\n');
             let processedAnswer = '';
             let inAnswerCodeBlock = false;
 
@@ -201,8 +198,7 @@ export const parseMarkdownContent = (
       codeLanguage: detectedLanguage,
     };
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (const line of lines) {
       const trimmedLine = line.trim();
 
       if (trimmedLine === '---') {
@@ -221,24 +217,20 @@ export const parseMarkdownContent = (
       }
 
       if (trimmedLine.startsWith('```')) {
-        //const languageMatch = trimmedLine.match(/```(javascript|html)?/);
+        const languageMatch = trimmedLine.match(/```(javascript|html)?/);
+        if (languageMatch && languageMatch[1]) {
+          detectedLanguage = languageMatch[1] as 'javascript' | 'html';
+          parsedData.codeLanguage = detectedLanguage;
+        }
+        
         isInCodeBlock = !isInCodeBlock;
         
         if (!isInCodeBlock && codeBuffer) {
           if (currentSection === '') {
-            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
-            if (isCode) {
-              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            } else {
-              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            }
+            //const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
+            parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
           } else {
-            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
-            if (isCode) {
-              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            } else {
-              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            }
+            currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
           }
           codeBuffer = '';
         }
