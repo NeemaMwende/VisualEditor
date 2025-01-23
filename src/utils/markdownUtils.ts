@@ -54,6 +54,40 @@ const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascri
   return { isCode: false, language: '' };
 };
 
+// markdownUtils.ts
+
+export const formatCode = (code: string, language: 'javascript' | 'html'): string => {
+  if (!code.trim()) return code;
+  
+  // Split code into lines and remove empty lines
+  const lines = code.split('\n').filter(line => line.trim());
+  
+  // Format JavaScript code
+  if (language === 'javascript') {
+    return lines.map(line => {
+      // Add newline after semicolons or closing braces if not already present
+      line = line.replace(/([;{}])\s*([^;{}])/g, '$1\n$2');
+      // Add newline before opening braces if not already present
+      line = line.replace(/([^\s{])\s*({)/g, '$1\n$2');
+      return line;
+    }).join('\n');
+  }
+  
+  // Format HTML code
+  if (language === 'html') {
+    let indentLevel = 0;
+    return lines.map(line => {
+      const isClosingTag = line.trim().startsWith('</');
+      if (isClosingTag) indentLevel = Math.max(0, indentLevel - 1);
+      const formatted = '  '.repeat(indentLevel) + line.trim();
+      if (!isClosingTag && line.includes('>') && !line.includes('/>')) indentLevel++;
+      return formatted;
+    }).join('\n');
+  }
+  
+  return code;
+};
+
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
@@ -66,74 +100,93 @@ export const generateMarkdown = (
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
+    md += `language: ${defaultLanguage}\n`;
     md += '---\n\n';
 
     const questionLines = question.question.split('\n');
     let processedQuestion = '';
     let inCodeBlock = false;
+    let codeBuffer = '';
     
     for (const line of questionLines) {
       const trimmedLine = line.trim();
       const { isCode, language } = isStrictCodeBlock(trimmedLine);
     
-      if (enableFormatting) {
-        if (isCode && !inCodeBlock) {
-          processedQuestion += `\`\`\`${language || defaultLanguage}\n`;
-          inCodeBlock = true;
-        } else if (!isCode && inCodeBlock) {
-          processedQuestion += '```\n';
-          inCodeBlock = false;
+      if (enableFormatting && isCode && !inCodeBlock) {
+        if (codeBuffer) {
+          processedQuestion += formatCode(codeBuffer, defaultLanguage) + '\n';
+          codeBuffer = '';
         }
+        processedQuestion += `\`\`\`${defaultLanguage}\n`;
+        inCodeBlock = true;
+      } else if (!isCode && inCodeBlock) {
+        if (codeBuffer) {
+          processedQuestion += formatCode(codeBuffer, defaultLanguage) + '\n';
+          codeBuffer = '';
+        }
+        processedQuestion += '```\n';
+        inCodeBlock = false;
       }
     
-      if (inCodeBlock || !enableFormatting || !isStrictCodeBlock(trimmedLine).isCode) {
+      if (inCodeBlock) {
+        codeBuffer += line + '\n';
+      } else {
         processedQuestion += line + '\n';
       }
     }
     
+    if (codeBuffer) {
+      processedQuestion += formatCode(codeBuffer, defaultLanguage) + '\n';
+    }
     if (inCodeBlock) {
       processedQuestion += '```\n';
     }
     
     md += processedQuestion.trim() + '\n\n';
 
-    // Process answers
+    // Process answers with similar formatting
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
           md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
-          const answerText = answer.text.trim();
-
-          if (enableFormatting) {
-            const lines = answerText.split('\n\n');
-            let processedAnswer = '';
-            let inAnswerCodeBlock = false;
-
-            for (const line of lines) {
-              const trimmedLine = line.trim();
-              const { isCode, language } = isStrictCodeBlock(trimmedLine);
-
-              if (isCode && !inAnswerCodeBlock) {
-                processedAnswer += `\`\`\`${language || defaultLanguage}\n`;
-                inAnswerCodeBlock = true;
-              } else if (!isCode && inAnswerCodeBlock) {
-                processedAnswer += '```\n';
-                inAnswerCodeBlock = false;
+          let answerBuffer = '';
+          let inAnswerCode = false;
+          
+          const answerLines = answer.text.trim().split('\n');
+          for (const line of answerLines) {
+            const { isCode } = isStrictCodeBlock(line.trim());
+            
+            if (enableFormatting && isCode && !inAnswerCode) {
+              if (answerBuffer) {
+                md += formatCode(answerBuffer, defaultLanguage) + '\n';
+                answerBuffer = '';
               }
-
-              if (inAnswerCodeBlock || !isCode) {
-                processedAnswer += line + '\n';
+              md += `\`\`\`${defaultLanguage}\n`;
+              inAnswerCode = true;
+            } else if (!isCode && inAnswerCode) {
+              if (answerBuffer) {
+                md += formatCode(answerBuffer, defaultLanguage) + '\n';
+                answerBuffer = '';
               }
+              md += '```\n';
+              inAnswerCode = false;
             }
-
-            if (inAnswerCodeBlock) {
-              processedAnswer += '```\n';
+            
+            if (inAnswerCode) {
+              answerBuffer += line + '\n';
+            } else {
+              md += line + '\n';
             }
-
-            md += processedAnswer.trim() + '\n\n';
-          } else {
-            md += `${answerText}\n\n`;
           }
+          
+          if (answerBuffer) {
+            md += formatCode(answerBuffer, defaultLanguage) + '\n';
+          }
+          if (inAnswerCode) {
+            md += '```\n';
+          }
+          
+          md += '\n';
         }
       });
     }

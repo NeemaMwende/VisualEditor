@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, ArrowLeft, Shuffle, Settings } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { EditorQuestion } from '@/app/components/Interfaces';
@@ -67,6 +67,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     defaultLanguage: (initialData as Question)?.codeLanguage || 'javascript'
   });
   const [answerOrder, setAnswerOrder] = useState<string[]>([]);
+  const lastLanguageRef = useRef<'javascript' | 'html'>(formattingOptions.defaultLanguage);
 
   const FormattingControls = () => (
     <div className="mb-6 p-2 sm:p-4 bg-gray-50 rounded-lg border">
@@ -196,12 +197,35 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     }
   }, [initialData, isEditing]);
 
-  useEffect(() => {
-    if (showMarkdown && !isMarkdownSyncing) {
-      setMarkdownContent(currentMarkdown);
-    }
-  }, [showMarkdown, currentMarkdown, isMarkdownSyncing]);
+  // useEffect(() => {
+  //   if (showMarkdown && !isMarkdownSyncing) {
+  //     setMarkdownContent(currentMarkdown);
+  //   }
+  // }, [showMarkdown, currentMarkdown, isMarkdownSyncing]);
 
+  // Update useEffect in QuestionEditor.tsx
+useEffect(() => {
+  if (showMarkdown && !isMarkdownSyncing && formattingOptions.defaultLanguage) {
+    const shouldUpdate = lastLanguageRef.current !== formattingOptions.defaultLanguage;
+    if (shouldUpdate) {
+      const newMarkdown = generateMarkdown(
+        {
+          id: initialData?.id || uuidv4(),
+          question,
+          answers,
+          difficulty,
+          tags,
+          title,
+          codeLanguage: formattingOptions.defaultLanguage,
+        },
+        formattingOptions.enableCodeFormatting,
+        formattingOptions.defaultLanguage
+      );
+      setMarkdownContent(newMarkdown);
+      lastLanguageRef.current = formattingOptions.defaultLanguage;
+    }
+  }
+}, [showMarkdown, formattingOptions.defaultLanguage, question, answers, difficulty, tags, title]);
 
  
   useEffect(() => {
