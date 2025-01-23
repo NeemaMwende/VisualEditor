@@ -26,28 +26,25 @@ export interface FormattingOptions {
   defaultLanguage: 'javascript' | 'html';
 }
 
-const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 'html' | '' } => {
+const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 'html' | '' } => {
   const jsPatterns = [
-    /\b(const|let|var|function)\s+\w+/,
-    /\bclass\s+\w+/,
-    /\b(import|export)\b/,
-    /=>\s*{|\(\)\s*=>/,
-    /\b(if|for|while|switch|return)\b/,
-    /\b(try|catch|finally)\b/,
-    /\b(async|await)\b/,
-    ///\b(useHash|pushState|useHTML5|pushState)\b/,
-    /\.\w+\(/,
-    /new\s+\w+/
+    /^(const|let|var|function)\s+\w+/,
+    /^(export\s+)?(class)\s+\w+/,
+    /^(import|export)\b/,
+    /^const\s+\w+\s*=\s*\(.*\)\s*=>\s*{/,
+    /^(if|for|while|switch|return)\b/,
+    /^(try|catch|finally)\b/,
+    /^(async|await)\b/,
+    /^\w+\.\w+\(/,
+    /^new\s+\w+/
   ];
 
   const htmlPatterns = [
-    /<[a-zA-Z][^>]*>/,
-    /<\/[a-zA-Z][^>]*>/,
-    /<[^>]+\/>/,
-    /<(div|span|p|a|button|input|form|label|!DOCTYPE)/i
+    /^<[a-zA-Z][^>]*>/,
+    /^<\/[a-zA-Z][^>]*>/,
+    /^<[^>]+\/>/,
+    /^<(div|span|p|a|button|input|form|label|!DOCTYPE)/i
   ];
-
-  if (text.includes('```')) return { isCode: true, language: '' };
 
   const jsMatches = jsPatterns.filter(pattern => pattern.test(text)).length;
   const htmlMatches = htmlPatterns.filter(pattern => pattern.test(text)).length;
@@ -57,21 +54,6 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
   return { isCode: false, language: '' };
 };
 
-
-// const formatCodeBlock = (code: string, language: string): string => {
-//   if (!code.trim()) return code;
-
-//   code = code.replace(/```[\w-]*\n|```$/g, '');
-  
-//   const lines = code.split('\n').map(line => line.trim()).filter(Boolean);
-//   let formattedCode = lines.join('\n');
-
-//   if (!formattedCode.startsWith('```')) {
-//     formattedCode = `\`\`\`${language}\n${formattedCode}\n\`\`\``;
-//   }
-
-//   return formattedCode;
-// };
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
@@ -86,42 +68,36 @@ export const generateMarkdown = (
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
 
-    
     const questionLines = question.question.split('\n');
     let processedQuestion = '';
-    //let codeContent = '';
-    let inQuestionText = true;
+    let inCodeBlock = false;
     
     for (const line of questionLines) {
       const trimmedLine = line.trim();
-      
+      const { isCode, language } = isStrictCodeBlock(trimmedLine);
+    
       if (enableFormatting) {
-        const { isCode } = isCodeBlock(trimmedLine);
-        
-        if (isCode && inQuestionText) {
-          if (processedQuestion) {
-            processedQuestion += '\n';
-          }
-          processedQuestion += `\`\`\`${defaultLanguage}\n`;
-          inQuestionText = false;
-        }
-        
-        if (!inQuestionText || isCode) {
-          processedQuestion += line + '\n';
-        } else {
-          processedQuestion += line + '\n';
-        }
-      } else {
-        if (trimmedLine) {
-          processedQuestion += line + '\n';
+        // Only start a code block if the line is actually code
+        if (isCode && !inCodeBlock) {
+          processedQuestion += `\`\`\`${language || defaultLanguage}\n`;
+          inCodeBlock = true;
+        } else if (!isCode && inCodeBlock) {
+          processedQuestion += '```\n';
+          inCodeBlock = false;
         }
       }
+    
+      // If in code block or line is not code, add the line
+      if (inCodeBlock || !enableFormatting || !isStrictCodeBlock(trimmedLine).isCode) {
+        processedQuestion += line + '\n';
+      }
     }
-
-    if (!inQuestionText) {
+    
+    // Close code block if still open
+    if (inCodeBlock) {
       processedQuestion += '```\n';
     }
-
+    
     md += processedQuestion.trim() + '\n\n';
 
     // Process answers
@@ -132,12 +108,32 @@ export const generateMarkdown = (
           const answerText = answer.text.trim();
 
           if (enableFormatting) {
-            const { isCode } = isCodeBlock(answerText);
-            if (isCode) {
-              md += `\`\`\`${defaultLanguage}\n${answerText}\n\`\`\`\n\n`;
-            } else {
-              md += `${answerText}\n\n`;
+            const lines = answerText.split('\n');
+            let processedAnswer = '';
+            let inAnswerCodeBlock = false;
+
+            for (const line of lines) {
+              const trimmedLine = line.trim();
+              const { isCode, language } = isStrictCodeBlock(trimmedLine);
+
+              if (isCode && !inAnswerCodeBlock) {
+                processedAnswer += `\`\`\`${language || defaultLanguage}\n`;
+                inAnswerCodeBlock = true;
+              } else if (!isCode && inAnswerCodeBlock) {
+                processedAnswer += '```\n';
+                inAnswerCodeBlock = false;
+              }
+
+              if (inAnswerCodeBlock || !isCode) {
+                processedAnswer += line + '\n';
+              }
             }
+
+            if (inAnswerCodeBlock) {
+              processedAnswer += '```\n';
+            }
+
+            md += processedAnswer.trim() + '\n\n';
           } else {
             md += `${answerText}\n\n`;
           }
@@ -151,13 +147,14 @@ export const generateMarkdown = (
     return '';
   }
 };
+
 export const parseMarkdownContent = (
   content: string,
   formattingOptions: FormattingOptions = {
     enableCodeFormatting: true,
     defaultLanguage: 'javascript',
   }
-  ): {
+): {
   title: string;
   question: string;
   answers: Array<{ id: string; text: string; isCorrect: boolean }>;
@@ -224,12 +221,24 @@ export const parseMarkdownContent = (
       }
 
       if (trimmedLine.startsWith('```')) {
+        //const languageMatch = trimmedLine.match(/```(javascript|html)?/);
         isInCodeBlock = !isInCodeBlock;
+        
         if (!isInCodeBlock && codeBuffer) {
           if (currentSection === '') {
-            parsedData.question += codeBuffer;
+            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
+            if (isCode) {
+              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
+            } else {
+              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
+            }
           } else {
-            currentContent += codeBuffer;
+            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
+            if (isCode) {
+              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
+            } else {
+              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
+            }
           }
           codeBuffer = '';
         }
@@ -277,7 +286,6 @@ export const parseMarkdownContent = (
       });
     }
 
-    
     return {
       ...parsedData,
       enableCodeFormatting: formattingOptions.enableCodeFormatting
