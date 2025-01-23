@@ -220,14 +220,12 @@ export const parseMarkdownContent = (
         continue;
       }
 
-      // Strict handling of code blocks
       if (trimmedLine.startsWith('```')) {
-        const languageMatch = trimmedLine.match(/```(javascript|html)?/);
+        //const languageMatch = trimmedLine.match(/```(javascript|html)?/);
         isInCodeBlock = !isInCodeBlock;
         
         if (!isInCodeBlock && codeBuffer) {
           if (currentSection === '') {
-            // Only add code block if it contains actual code
             const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
             if (isCode) {
               parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
@@ -307,7 +305,6 @@ export const parseMarkdownContent = (
   }
 };
 
-// Remaining utility functions (saveMarkdownToLocalStorage, etc.) stay the same
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {
     localStorage.setItem('markdownFiles', JSON.stringify(files));
@@ -326,7 +323,6 @@ export const getMarkdownFromLocalStorage = (): MarkdownFile[] => {
   }
 };
 
-// ... (rest of the functions remain the same)
 export const addNewMarkdownFile = (
   markdownFiles: MarkdownFile[],
   content: string,
