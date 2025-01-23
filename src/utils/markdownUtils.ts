@@ -54,6 +54,32 @@ const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascri
   return { isCode: false, language: '' };
 };
 
+export const formatCode = (code: string, language: 'javascript' | 'html'): string => {
+  if (!code.trim()) return code;
+  const lines = code.split('\n').filter(line => line.trim());
+  if (language === 'javascript') {
+    return lines.map(line => {
+      line = line.replace(/([;{}])\s*([^;{}])/g, '$1\n$2');
+      line = line.replace(/([^\s{])\s*({)/g, '$1\n$2');
+      return line;
+    }).join('\n');
+  }
+  
+  // Format HTML code
+  if (language === 'html') {
+    let indentLevel = 0;
+    return lines.map(line => {
+      const isClosingTag = line.trim().startsWith('</');
+      if (isClosingTag) indentLevel = Math.max(0, indentLevel - 1);
+      const formatted = '  '.repeat(indentLevel) + line.trim();
+      if (!isClosingTag && line.includes('>') && !line.includes('/>')) indentLevel++;
+      return formatted;
+    }).join('\n');
+  }
+  
+  return code;
+};
+
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
@@ -71,72 +97,86 @@ export const generateMarkdown = (
     const questionLines = question.question.split('\n');
     let processedQuestion = '';
     let inCodeBlock = false;
+    let codeBuffer = '';
     
     for (const line of questionLines) {
       const trimmedLine = line.trim();
-      const { isCode, language } = isStrictCodeBlock(trimmedLine);
+      const { isCode } = isStrictCodeBlock(trimmedLine);
     
-      if (enableFormatting) {
-        // Only start a code block if the line is actually code
-        if (isCode && !inCodeBlock) {
-          processedQuestion += `\`\`\`${language || defaultLanguage}\n`;
-          inCodeBlock = true;
-        } else if (!isCode && inCodeBlock) {
-          processedQuestion += '```\n';
-          inCodeBlock = false;
+      if (enableFormatting && isCode && !inCodeBlock) {
+        if (codeBuffer) {
+          processedQuestion += formatCode(codeBuffer, defaultLanguage) + '\n';
+          codeBuffer = '';
         }
+        processedQuestion += `\`\`\`${defaultLanguage}\n`;
+        inCodeBlock = true;
+      } else if (!isCode && inCodeBlock) {
+        if (codeBuffer) {
+          processedQuestion += formatCode(codeBuffer, defaultLanguage) + '\n';
+          codeBuffer = '';
+        }
+        processedQuestion += '```\n';
+        inCodeBlock = false;
       }
     
-      // If in code block or line is not code, add the line
-      if (inCodeBlock || !enableFormatting || !isStrictCodeBlock(trimmedLine).isCode) {
+      if (inCodeBlock) {
+        codeBuffer += line + '\n';
+      } else {
         processedQuestion += line + '\n';
       }
     }
     
-    // Close code block if still open
+    if (codeBuffer) {
+      processedQuestion += formatCode(codeBuffer, defaultLanguage) + '\n';
+    }
     if (inCodeBlock) {
       processedQuestion += '```\n';
     }
     
     md += processedQuestion.trim() + '\n\n';
 
-    // Process answers
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
-          md += `# ${answer.isCorrect ? 'Correct' : ''}\n`;
-          const answerText = answer.text.trim();
-
-          if (enableFormatting) {
-            const lines = answerText.split('\n');
-            let processedAnswer = '';
-            let inAnswerCodeBlock = false;
-
-            for (const line of lines) {
-              const trimmedLine = line.trim();
-              const { isCode, language } = isStrictCodeBlock(trimmedLine);
-
-              if (isCode && !inAnswerCodeBlock) {
-                processedAnswer += `\`\`\`${language || defaultLanguage}\n`;
-                inAnswerCodeBlock = true;
-              } else if (!isCode && inAnswerCodeBlock) {
-                processedAnswer += '```\n';
-                inAnswerCodeBlock = false;
+          md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
+          let answerBuffer = '';
+          let inAnswerCode = false;
+          
+          const answerLines = answer.text.trim().split('\n');
+          for (const line of answerLines) {
+            const { isCode } = isStrictCodeBlock(line.trim());
+            
+            if (enableFormatting && isCode && !inAnswerCode) {
+              if (answerBuffer) {
+                md += formatCode(answerBuffer, defaultLanguage) + '\n';
+                answerBuffer = '';
               }
-
-              if (inAnswerCodeBlock || !isCode) {
-                processedAnswer += line + '\n';
+              md += `\`\`\`${defaultLanguage}\n`;
+              inAnswerCode = true;
+            } else if (!isCode && inAnswerCode) {
+              if (answerBuffer) {
+                md += formatCode(answerBuffer, defaultLanguage) + '\n';
+                answerBuffer = '';
               }
+              md += '```\n';
+              inAnswerCode = false;
             }
-
-            if (inAnswerCodeBlock) {
-              processedAnswer += '```\n';
+            
+            if (inAnswerCode) {
+              answerBuffer += line + '\n';
+            } else {
+              md += line + '\n';
             }
-
-            md += processedAnswer.trim() + '\n\n';
-          } else {
-            md += `${answerText}\n\n`;
           }
+          
+          if (answerBuffer) {
+            md += formatCode(answerBuffer, defaultLanguage) + '\n';
+          }
+          if (inAnswerCode) {
+            md += '```\n';
+          }
+          
+          md += '\n';
         }
       });
     }
@@ -201,8 +241,7 @@ export const parseMarkdownContent = (
       codeLanguage: detectedLanguage,
     };
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (const line of lines) {
       const trimmedLine = line.trim();
 
       if (trimmedLine === '---') {
@@ -221,24 +260,20 @@ export const parseMarkdownContent = (
       }
 
       if (trimmedLine.startsWith('```')) {
-        //const languageMatch = trimmedLine.match(/```(javascript|html)?/);
+        const languageMatch = trimmedLine.match(/```(javascript|html)?/);
+        if (languageMatch && languageMatch[1]) {
+          detectedLanguage = languageMatch[1] as 'javascript' | 'html';
+          parsedData.codeLanguage = detectedLanguage;
+        }
+        
         isInCodeBlock = !isInCodeBlock;
         
         if (!isInCodeBlock && codeBuffer) {
           if (currentSection === '') {
-            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
-            if (isCode) {
-              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            } else {
-              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            }
+            //const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
+            parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
           } else {
-            const { isCode } = isStrictCodeBlock(codeBuffer.split('\n')[0].trim());
-            if (isCode) {
-              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            } else {
-              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
-            }
+            currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
           }
           codeBuffer = '';
         }

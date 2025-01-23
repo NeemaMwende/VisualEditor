@@ -168,7 +168,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                 difficulty: parsedData.difficulty,
                 tags: parsedData.tags,
                 markdownContent: editingMarkdown.content,
-                enableCodeFormatting: originalQuestion?.enableCodeFormatting, // Preserve the original formatting preference
+                enableCodeFormatting: originalQuestion?.enableCodeFormatting, 
                 type: 'question'
               }
             : q
