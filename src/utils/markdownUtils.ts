@@ -35,7 +35,6 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
     /\b(if|for|while|switch|return)\b/,
     /\b(try|catch|finally)\b/,
     /\b(async|await)\b/,
-    ///\b(useHash|pushState|useHTML5|pushState)\b/,
     /\.\w+\(/,
     /new\s+\w+/
   ];
@@ -57,21 +56,6 @@ const isCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 
   return { isCode: false, language: '' };
 };
 
-
-// const formatCodeBlock = (code: string, language: string): string => {
-//   if (!code.trim()) return code;
-
-//   code = code.replace(/```[\w-]*\n|```$/g, '');
-  
-//   const lines = code.split('\n').map(line => line.trim()).filter(Boolean);
-//   let formattedCode = lines.join('\n');
-
-//   if (!formattedCode.startsWith('```')) {
-//     formattedCode = `\`\`\`${language}\n${formattedCode}\n\`\`\``;
-//   }
-
-//   return formattedCode;
-// };
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
@@ -86,18 +70,17 @@ export const generateMarkdown = (
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
 
-    
     const questionLines = question.question.split('\n');
     let processedQuestion = '';
-    //let codeContent = '';
     let inQuestionText = true;
     
     for (const line of questionLines) {
       const trimmedLine = line.trim();
-      
+    
       if (enableFormatting) {
         const { isCode } = isCodeBlock(trimmedLine);
-        
+    
+        // Ensure code wrapping applies only to actual code, not plain text
         if (isCode && inQuestionText) {
           if (processedQuestion) {
             processedQuestion += '\n';
@@ -105,10 +88,11 @@ export const generateMarkdown = (
           processedQuestion += `\`\`\`${defaultLanguage}\n`;
           inQuestionText = false;
         }
-        
+    
         if (!inQuestionText || isCode) {
           processedQuestion += line + '\n';
         } else {
+          // For plain text questions, just append the text without wrapping
           processedQuestion += line + '\n';
         }
       } else {
@@ -117,11 +101,12 @@ export const generateMarkdown = (
         }
       }
     }
-
+    
+    // Close code block only if it was opened
     if (!inQuestionText) {
       processedQuestion += '```\n';
     }
-
+    
     md += processedQuestion.trim() + '\n\n';
 
     // Process answers
@@ -151,13 +136,14 @@ export const generateMarkdown = (
     return '';
   }
 };
+
 export const parseMarkdownContent = (
   content: string,
   formattingOptions: FormattingOptions = {
     enableCodeFormatting: true,
     defaultLanguage: 'javascript',
   }
-  ): {
+): {
   title: string;
   question: string;
   answers: Array<{ id: string; text: string; isCorrect: boolean }>;
@@ -223,13 +209,27 @@ export const parseMarkdownContent = (
         continue;
       }
 
+      // Strict handling of code blocks
       if (trimmedLine.startsWith('```')) {
         isInCodeBlock = !isInCodeBlock;
         if (!isInCodeBlock && codeBuffer) {
           if (currentSection === '') {
-            parsedData.question += codeBuffer;
+            // Only add code block if it's a code-specific question
+            const { isCode } = isCodeBlock(codeBuffer);
+            if (isCode) {
+              parsedData.question += codeBuffer;
+            } else {
+              // For non-code content, remove code block markers
+              parsedData.question += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
+            }
           } else {
-            currentContent += codeBuffer;
+            // Similar handling for answers
+            const { isCode } = isCodeBlock(codeBuffer);
+            if (isCode) {
+              currentContent += codeBuffer;
+            } else {
+              currentContent += codeBuffer.replace(/^```[\w-]*\n|```$/gm, '').trim();
+            }
           }
           codeBuffer = '';
         }
@@ -277,7 +277,6 @@ export const parseMarkdownContent = (
       });
     }
 
-    
     return {
       ...parsedData,
       enableCodeFormatting: formattingOptions.enableCodeFormatting
