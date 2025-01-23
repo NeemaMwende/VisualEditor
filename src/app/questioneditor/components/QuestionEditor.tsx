@@ -116,25 +116,25 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   );
 
 
-  const currentMarkdown = useMemo(() => {
-    const orderedAnswers = answerOrder.length > 0
-      ? answerOrder.map(id => answers.find(a => a.id === id)!)
-      : answers;
+  // const currentMarkdown = useMemo(() => {
+  //   const orderedAnswers = answerOrder.length > 0
+  //     ? answerOrder.map(id => answers.find(a => a.id === id)!)
+  //     : answers;
 
-    return generateMarkdown(
-      {
-        id: String(initialData?.id || Date.now()),
-        question: question.trim(),
-        answers: orderedAnswers,
-        difficulty,
-        tags,
-        title: title || '',
-        codeLanguage: formattingOptions.defaultLanguage
-      },
-      formattingOptions.enableCodeFormatting,
-      formattingOptions.defaultLanguage
-    );
-  }, [question, answers, difficulty, tags, title, initialData?.id, formattingOptions, answerOrder]);
+  //   return generateMarkdown(
+  //     {
+  //       id: String(initialData?.id || Date.now()),
+  //       question: question.trim(),
+  //       answers: orderedAnswers,
+  //       difficulty,
+  //       tags,
+  //       title: title || '',
+  //       codeLanguage: formattingOptions.defaultLanguage
+  //     },
+  //     formattingOptions.enableCodeFormatting,
+  //     formattingOptions.defaultLanguage
+  //   );
+  // }, [question, answers, difficulty, tags, title, initialData?.id, formattingOptions, answerOrder]);
 
   useEffect(() => {
     if (answers.length > 0 && answerOrder.length === 0) {
@@ -150,7 +150,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     }
     setAnswerOrder(newOrder);
   
-    // Reorder answers and update markdown
     const reorderedAnswers = newOrder.map(id => answers.find(a => a.id === id)!);
     setAnswers(reorderedAnswers);
   
@@ -197,13 +196,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     }
   }, [initialData, isEditing]);
 
-  // useEffect(() => {
-  //   if (showMarkdown && !isMarkdownSyncing) {
-  //     setMarkdownContent(currentMarkdown);
-  //   }
-  // }, [showMarkdown, currentMarkdown, isMarkdownSyncing]);
-
-  // Update useEffect in QuestionEditor.tsx
 useEffect(() => {
   if (showMarkdown && !isMarkdownSyncing && formattingOptions.defaultLanguage) {
     const shouldUpdate = lastLanguageRef.current !== formattingOptions.defaultLanguage;

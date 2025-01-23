@@ -54,20 +54,12 @@ const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascri
   return { isCode: false, language: '' };
 };
 
-// markdownUtils.ts
-
 export const formatCode = (code: string, language: 'javascript' | 'html'): string => {
   if (!code.trim()) return code;
-  
-  // Split code into lines and remove empty lines
   const lines = code.split('\n').filter(line => line.trim());
-  
-  // Format JavaScript code
   if (language === 'javascript') {
     return lines.map(line => {
-      // Add newline after semicolons or closing braces if not already present
       line = line.replace(/([;{}])\s*([^;{}])/g, '$1\n$2');
-      // Add newline before opening braces if not already present
       line = line.replace(/([^\s{])\s*({)/g, '$1\n$2');
       return line;
     }).join('\n');
@@ -100,7 +92,6 @@ export const generateMarkdown = (
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
-    md += `language: ${defaultLanguage}\n`;
     md += '---\n\n';
 
     const questionLines = question.question.split('\n');
@@ -110,7 +101,7 @@ export const generateMarkdown = (
     
     for (const line of questionLines) {
       const trimmedLine = line.trim();
-      const { isCode, language } = isStrictCodeBlock(trimmedLine);
+      const { isCode } = isStrictCodeBlock(trimmedLine);
     
       if (enableFormatting && isCode && !inCodeBlock) {
         if (codeBuffer) {
@@ -144,7 +135,6 @@ export const generateMarkdown = (
     
     md += processedQuestion.trim() + '\n\n';
 
-    // Process answers with similar formatting
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
