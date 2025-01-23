@@ -56,27 +56,18 @@ const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascri
 
 export const formatCode = (code: string, language: 'javascript' | 'html'): string => {
   if (!code.trim()) return code;
+
   const lines = code.split('\n').filter(line => line.trim());
-  if (language === 'javascript') {
-    return lines.map(line => {
-      line = line.replace(/([;{}])\s*([^;{}])/g, '$1\n$2');
-      line = line.replace(/([^\s{])\s*({)/g, '$1\n$2');
-      return line;
-    }).join('\n');
+
+  if (language === 'javascript' || language === 'html') {
+    return lines
+      .map(line => {
+        line = line.replace(/([;{}])\s*([^;])/g, '$1\n$2'); 
+        return line.trim();
+      })
+      .join('\n');
   }
-  
-  // Format HTML code
-  if (language === 'html') {
-    let indentLevel = 0;
-    return lines.map(line => {
-      const isClosingTag = line.trim().startsWith('</');
-      if (isClosingTag) indentLevel = Math.max(0, indentLevel - 1);
-      const formatted = '  '.repeat(indentLevel) + line.trim();
-      if (!isClosingTag && line.includes('>') && !line.includes('/>')) indentLevel++;
-      return formatted;
-    }).join('\n');
-  }
-  
+
   return code;
 };
 
@@ -92,6 +83,7 @@ export const generateMarkdown = (
     let md = '---\n';
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
+
     md += '---\n\n';
 
     const questionLines = question.question.split('\n');
