@@ -190,7 +190,7 @@ const Dashboard = () => {
         saveQuestionToFile(question);
       });
     }
-  }, [questions, fileSystem.handle]);
+  }, [questions, fileSystem.handle,saveQuestionToFile]);
 
   const handleSaveMarkdown = (markdownData: MarkdownData) => {
     const updatedMarkdowns = [...markdowns];
