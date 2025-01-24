@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronDown, ArrowLeft, Shuffle, Settings } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { EditorQuestion } from '@/app/components/Interfaces';
@@ -115,26 +115,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     </div>
   );
 
-
-  // const currentMarkdown = useMemo(() => {
-  //   const orderedAnswers = answerOrder.length > 0
-  //     ? answerOrder.map(id => answers.find(a => a.id === id)!)
-  //     : answers;
-
-  //   return generateMarkdown(
-  //     {
-  //       id: String(initialData?.id || Date.now()),
-  //       question: question.trim(),
-  //       answers: orderedAnswers,
-  //       difficulty,
-  //       tags,
-  //       title: title || '',
-  //       codeLanguage: formattingOptions.defaultLanguage
-  //     },
-  //     formattingOptions.enableCodeFormatting,
-  //     formattingOptions.defaultLanguage
-  //   );
-  // }, [question, answers, difficulty, tags, title, initialData?.id, formattingOptions, answerOrder]);
 
   useEffect(() => {
     if (answers.length > 0 && answerOrder.length === 0) {
@@ -342,6 +322,12 @@ useEffect(() => {
     }
     onBack();
   };
+
+  // const handleFormatAsCode = (language: 'javascript' | 'html') => {
+  //   const selectedText = getSelectedText(); // Implement this method to get selected text
+  //   const formattedText = formatSelectedText(selectedText, language);
+  //   replaceSelectedText(formattedText); // Implement this method to replace selected text
+  // };
 
   return (
     <div className="w-full max-w-4xl mx-auto p-2 sm:p-4">
