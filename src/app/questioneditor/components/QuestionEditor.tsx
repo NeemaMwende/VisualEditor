@@ -6,6 +6,7 @@ import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
+import TextSelectionFormatter from '@/app/components/TextSelectionFormatter';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
@@ -68,6 +69,30 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   });
   const [answerOrder, setAnswerOrder] = useState<string[]>([]);
   const lastLanguageRef = useRef<'javascript' | 'html'>(formattingOptions.defaultLanguage);
+
+ 
+  const handleFormatText = (formattedText: string, language: 'javascript' | 'html') => {
+    // Update either question or answer based on current selection context
+    const currentQuestionData = {
+      id: initialData?.id || uuidv4(),
+      question,
+      answers,
+      difficulty,
+      tags,
+      title,
+      codeLanguage: formattingOptions.defaultLanguage,
+    };
+
+    const newMarkdownContent = generateMarkdown(
+      {
+        ...currentQuestionData,
+        question: formattedText
+      },
+      formattingOptions.enableCodeFormatting,
+      language
+    );
+    setMarkdownContent(newMarkdownContent);
+  };
 
   const FormattingControls = () => (
     <div className="mb-6 p-2 sm:p-4 bg-gray-50 rounded-lg border">
@@ -323,14 +348,20 @@ useEffect(() => {
     onBack();
   };
 
-  // const handleFormatAsCode = (language: 'javascript' | 'html') => {
-  //   const selectedText = getSelectedText(); // Implement this method to get selected text
-  //   const formattedText = formatSelectedText(selectedText, language);
-  //   replaceSelectedText(formattedText); // Implement this method to replace selected text
-  // };
 
   return (
     <div className="w-full max-w-4xl mx-auto p-2 sm:p-4">
+        <TextSelectionFormatter 
+  onFormat={handleFormatText} 
+  currentQuestion={{
+    question,
+    answers,
+    difficulty,
+    tags,
+    title
+  }} 
+  onQuestionChange={setQuestion}
+/>
       <div className="mb-4">
         <button
           onClick={handleBack}

@@ -41,6 +41,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   } | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
+  
   const handleDelete = async (id: string) => {
     if (!fileSystem.handle) return;
 
