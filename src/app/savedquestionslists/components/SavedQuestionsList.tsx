@@ -109,7 +109,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     
     const markdownContent = generateMarkdown(
       question,
-      question.enableCodeFormatting ?? false, // Use the saved preference
+      question.enableCodeFormatting ?? true,
       question.codeLanguage || 'javascript'
     );
     setEditingMarkdown({
@@ -120,7 +120,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     });
   };
   
-
   const saveMarkdownChanges = async () => {
     if (!fileSystem.handle || !editingMarkdown) {
       alert(fileSystem.handle ? 'No changes to save' : 'Please select a directory first');

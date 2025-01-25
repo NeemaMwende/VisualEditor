@@ -258,7 +258,6 @@ useEffect(() => {
     setMarkdownContent(newContent);
   };
 
-
   const handleSave = () => {
     if (!title.trim()) {
       if (currentFile?.name) {
@@ -275,7 +274,6 @@ useEffect(() => {
   
     const orderedAnswers = answerOrder.map((id) => answers.find((a) => a.id === id)!);
   
-    // Generate markdown with the current formatting preference
     const updatedMarkdown = generateMarkdown(
       {
         id: initialData?.id || uuidv4(),
@@ -285,7 +283,7 @@ useEffect(() => {
         tags,
         title,
         codeLanguage: formattingOptions.defaultLanguage,
-        enableCodeFormatting: formattingOptions.enableCodeFormatting // Pass the formatting preference
+        enableCodeFormatting: formattingOptions.enableCodeFormatting
       },
       formattingOptions.enableCodeFormatting,
       formattingOptions.defaultLanguage
@@ -301,7 +299,7 @@ useEffect(() => {
       type: 'question',
       markdownContent: updatedMarkdown,
       codeLanguage: formattingOptions.defaultLanguage,
-      enableCodeFormatting: formattingOptions.enableCodeFormatting // Save the formatting preference
+      enableCodeFormatting: formattingOptions.enableCodeFormatting
     };
   
     try {

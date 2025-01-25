@@ -108,11 +108,9 @@ export const generateMarkdown = (
       return text;
     };
 
-    // Process question content
     const processedQuestion = processMarkdownBlock(question.question, defaultLanguage);
     md += processedQuestion.trim() + '\n\n';
 
-    // Process answers
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
@@ -123,15 +121,12 @@ export const generateMarkdown = (
       });
     }
 
-    
-
     return md.trim();
   } catch (error) {
     console.error('Error generating markdown:', error);
     return '';
   }
 };
-
 export const parseMarkdownContent = (
   content: string,
   formattingOptions: FormattingOptions = {
@@ -164,6 +159,8 @@ export const parseMarkdownContent = (
   try {
     let detectedLanguage: 'javascript' | 'html' = formattingOptions.defaultLanguage;
     const languageMatch = content.match(/language:\s*(javascript|html)/);
+    const enableFormattingMatch = content.match(/enableCodeFormatting:\s*(true|false)/);
+
     if (languageMatch && (languageMatch[1] === 'javascript' || languageMatch[1] === 'html')) {
       detectedLanguage = languageMatch[1];
     }
@@ -182,7 +179,9 @@ export const parseMarkdownContent = (
       tags: [] as string[],
       markdownContent: content,
       codeLanguage: detectedLanguage,
-      enableCodeFormatting: formattingOptions.enableCodeFormatting || false
+      enableCodeFormatting: enableFormattingMatch 
+        ? enableFormattingMatch[1] === 'true' 
+        : (formattingOptions.enableCodeFormatting || false)
     };
 
     for (const line of lines) {
@@ -202,6 +201,7 @@ export const parseMarkdownContent = (
         }
         continue;
       }
+
 
       if (trimmedLine.startsWith('```')) {
         const languageMatch = trimmedLine.match(/```(javascript|html)?/);
@@ -270,6 +270,7 @@ export const parseMarkdownContent = (
     };
   }
 };
+
 
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {
