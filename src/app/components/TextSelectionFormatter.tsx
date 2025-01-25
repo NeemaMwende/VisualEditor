@@ -1,98 +1,150 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from 'react';
 import { FaUndo } from "react-icons/fa";
 
-const TextSelectionFormatter: React.FC = () => {
-  const textAreaRef = useRef<HTMLTextAreaElement>(null); 
-  const [format, setFormat] = useState<string>("");
-  const [originalText, setOriginalText] = useState<string>(""); // Stores the text before formatting
-  const [selectionStart, setSelectionStart] = useState<number>(0);
-  const [selectionEnd, setSelectionEnd] = useState<number>(0);
+interface TextSelectionFormatterProps {
+  questionRef: React.RefObject<HTMLTextAreaElement>;
+  answerRefs: React.RefObject<Array<HTMLTextAreaElement>>;
+  onFormat: (formattedText: string, language: 'javascript' | 'html') => void;
+  currentQuestion: {
+    question: string;
+    answers: { id: string; text: string; isCorrect: boolean }[];
+    difficulty: number;
+    tags: string[];
+    title: string;
+  };
+  onQuestionChange: (newQuestion: string) => void;
+  onAnswerChange: (answers: { id: string; text: string; isCorrect: boolean }[]) => void;
+}
 
-  const handleApplyFormat = () => {
-    const textArea = textAreaRef.current;
+const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({ 
+  questionRef,
+  answerRefs,
+  onFormat, 
+  currentQuestion, 
+  onQuestionChange,
+  onAnswerChange 
+}) => {
+  const [format, setFormat] = useState<'javascript' | 'html'>('javascript');
+  const [previousState, setPreviousState] = useState<{
+    question: string;
+    answers: { id: string; text: string; isCorrect: boolean }[];
+  }>({
+    question: currentQuestion.question,
+    answers: currentQuestion.answers
+  });
 
-    if (!textArea) {
-      console.error("Textarea element not found.");
-      return;
+  const getSelectedText = (): { 
+    text: string | null, 
+    type: 'question' | 'answer' | null, 
+    index?: number 
+  } => {
+    // Check question textarea first
+    if (questionRef.current) {
+      const start = questionRef.current.selectionStart;
+      const end = questionRef.current.selectionEnd;
+      const selectedText = questionRef.current.value.slice(start, end);
+      if (selectedText.trim()) {
+        return { text: selectedText, type: 'question' };
+      }
     }
 
-    const start = textArea.selectionStart || 0;
-    const end = textArea.selectionEnd || 0;
+    // Check answer textareas
+    if (answerRefs.current) {
+      for (let i = 0; i < answerRefs.current.length; i++) {
+        const textarea = answerRefs.current[i];
+        if (textarea) {
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const selectedText = textarea.value.slice(start, end);
+          if (selectedText.trim()) {
+            return { text: selectedText, type: 'answer', index: i };
+          }
+        }
+      }
+    }
 
-    if (start === end) {
+    return { text: null, type: null };
+  };
+
+  const handleTextFormat = () => {
+    const selectedInfo = getSelectedText();
+
+    if (!selectedInfo.text) {
       alert("Please select some text to format.");
       return;
     }
 
-    const selectedText = textArea.value.slice(start, end);
+    // Store previous state for potential undo
+    setPreviousState({
+      question: currentQuestion.question,
+      answers: currentQuestion.answers
+    });
 
-    if (!format) {
-      alert("Please select a format from the dropdown!");
-      return;
+    if (selectedInfo.type === 'question' && questionRef.current) {
+      const start = questionRef.current.selectionStart;
+      const end = questionRef.current.selectionEnd;
+
+      const formattedQuestion = questionRef.current.value.slice(0, start) + 
+        `\`\`\`${format}\n${selectedInfo.text}\n\`\`\`` + 
+        questionRef.current.value.slice(end);
+      
+      onQuestionChange(formattedQuestion);
+      onFormat(selectedInfo.text, format);
+    } else if (selectedInfo.type === 'answer' && 
+               selectedInfo.index !== undefined && 
+               answerRefs.current?.[selectedInfo.index]) {
+      const textarea = answerRefs.current[selectedInfo.index];
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      const updatedAnswers = currentQuestion.answers.map((answer, index) => {
+        if (index === selectedInfo.index) {
+          const formattedAnswer = textarea.value.slice(0, start) + 
+            `\`\`\`${format}\n${selectedInfo.text}\n\`\`\`` + 
+            textarea.value.slice(end);
+          return { ...answer, text: formattedAnswer };
+        }
+        return answer;
+      });
+
+      onAnswerChange(updatedAnswers);
+      onFormat(selectedInfo.text, format);
     }
-
-    const formattedText = `\`\`\`${format}${selectedText}\`\`\``;
-
-    const beforeText = textArea.value.slice(0, start);
-    const afterText = textArea.value.slice(end);
-    textArea.value = `${beforeText}${formattedText}${afterText}`;
-
-    const newCaretPosition = beforeText.length + formattedText.length;
-    textArea.setSelectionRange(newCaretPosition, newCaretPosition);
-
-    // Save original text
-    setOriginalText(textArea.value); // Save original before applying format
-    setSelectionStart(newCaretPosition);
-    setSelectionEnd(newCaretPosition);
-
-    textArea.focus();
   };
 
   const handleUndo = () => {
-    const textArea = textAreaRef.current;
-
-    if (!textArea) {
-      console.error("Textarea element not found.");
-      return;
-    }
-    
-    textArea.value = originalText;
-    textArea.setSelectionRange(selectionStart, selectionEnd);
-
-    textArea.focus();
+    onQuestionChange(previousState.question);
+    onAnswerChange(previousState.answers);
   };
 
   return (
-    <div className="p-6 font-sans">
-      <textarea
-        ref={textAreaRef}
-        className="w-full h-48 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-        defaultValue="What is the output of the code below. Const a = 12; Const b = 13; sum = a + b; console.log(sum);"
-      />
-      <div className="mt-4 flex items-center gap-4">
+    <div className="mb-4 p-4 bg-gray-50 rounded-lg border">
+      <div className="flex items-center gap-4 mb-2">
         <select
           value={format}
-          onChange={(e) => setFormat(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+          onChange={(e) => setFormat(e.target.value as 'javascript' | 'html')}
+          className="px-3 py-2 border rounded-md text-sm"
         >
-          <option value="">Select Format</option>
           <option value="javascript">JavaScript</option>
           <option value="html">HTML</option>
         </select>
         <button
-          onClick={handleApplyFormat}
-          className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          onClick={handleTextFormat}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
         >
-          Apply Format
+          Format Selected Text
         </button>
-        <div
+        <button 
           onClick={handleUndo}
-          className="relative cursor-pointer"
-          title="Undo changes"
+          className="text-gray-600 hover:text-gray-800"
+          title="Undo last change"
         >
-          <FaUndo className="text-xl text-gray-600 hover:text-gray-800" />
-        </div>
+          <FaUndo />
+        </button>
       </div>
+      <p className="text-xs text-gray-600">
+        Select text in the question or answer fields, then click Format Selected Text Button.
+      </p>
     </div>
   );
 };

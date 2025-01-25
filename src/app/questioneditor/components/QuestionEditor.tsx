@@ -69,7 +69,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   });
   const [answerOrder, setAnswerOrder] = useState<string[]>([]);
   const lastLanguageRef = useRef<'javascript' | 'html'>(formattingOptions.defaultLanguage);
-
+  const questionRef = useRef<HTMLTextAreaElement>(null);
+  const answerRefs = useRef<Array<HTMLTextAreaElement>>([]);
  
   const handleFormatText = (formattedText: string, language: 'javascript' | 'html') => {
     // Update either question or answer based on current selection context
@@ -351,17 +352,7 @@ useEffect(() => {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-2 sm:p-4">
-        <TextSelectionFormatter 
-  onFormat={handleFormatText} 
-  currentQuestion={{
-    question,
-    answers,
-    difficulty,
-    tags,
-    title
-  }} 
-  onQuestionChange={setQuestion}
-/>
+      
       <div className="mb-4">
         <button
           onClick={handleBack}
@@ -435,16 +426,33 @@ useEffect(() => {
               />
             </div>
 
+            <TextSelectionFormatter 
+              questionRef={questionRef}
+              answerRefs={answerRefs}
+              onFormat={handleFormatText} 
+              currentQuestion={{
+                question,
+                answers,
+                difficulty,
+                tags,
+                title
+              }} 
+              onQuestionChange={setQuestion}
+              onAnswerChange={setAnswers}
+            />
+
             <div className="space-y-2">
               <label className="block text-gray-700 text-sm font-bold">
                 Question
               </label>
               <textarea
                 value={question}
+                ref={questionRef}
                 onChange={(e) => setQuestion(e.target.value)}
                 className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
                 placeholder="Enter your question here"
+                
               />
             </div>
 
@@ -466,7 +474,8 @@ useEffect(() => {
                   <div key={answer.id} className="space-y-2">
                     <div className="flex items-center gap-2">
                       <input
-                        type="checkbox"
+                        type="checkbox"                        
+                         id={`answer-${index}`}
                         checked={answer.isCorrect}
                         onChange={() => {
                           const newAnswers = answers.map((ans, i) => ({
@@ -481,8 +490,15 @@ useEffect(() => {
                         Answer {String.fromCharCode(65 + index)}
                       </label>
                     </div>
-                    <textarea
+                    <textarea 
+                      key={answer.id}
+                      ref={(el) => {
+                        if (el) {
+                          answerRefs.current[index] = el;
+                        }
+                      }}
                       value={answer.text}
+                     // value={answer.text}
                       onChange={(e) => {
                         const newAnswers = [...answers];
                         newAnswers[index] = { ...answer, text: e.target.value };
