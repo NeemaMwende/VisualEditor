@@ -71,7 +71,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   const lastLanguageRef = useRef<'javascript' | 'html'>(formattingOptions.defaultLanguage);
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const answerRefs = useRef<Array<HTMLTextAreaElement>>([]);
- 
+  
   const handleFormatText = (formattedText: string, language: 'javascript' | 'html') => {
     // Update either question or answer based on current selection context
     const currentQuestionData = {
@@ -176,75 +176,103 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     setMarkdownContent(updatedMarkdown);
   };
   
-
   useEffect(() => {
     if (isEditing && initialData) {
       setQuestion(initialData.question || '');
       const initialAnswers = (initialData.answers || []).map((answer) => ({
         id: answer.id || uuidv4(),
-        text: answer.text || "",
+        text: answer.text || '',
         isCorrect: !!answer.isCorrect,
       }));
       setAnswers(initialAnswers);
-      setAnswerOrder(initialAnswers.map(a => a.id));
+      setAnswerOrder(initialAnswers.map((a) => a.id));
       setDifficulty(initialData.difficulty || 1);
       setTitle(initialData.title || '');
+  
       if (initialData.tags) {
         setTags(initialData.tags);
       }
-      setMarkdownContent(initialData.markdownContent || '');
+  
+      // Generate markdown during initialization
+      const updatedMarkdown = generateMarkdown(
+        {
+          id: initialData?.id || uuidv4(),
+          question: initialData.question || '',
+          answers: initialAnswers,
+          difficulty: initialData.difficulty || 1,
+          tags: initialData.tags || [],
+          title: initialData.title || '',
+          codeLanguage: (initialData as Question).codeLanguage || 'javascript',
+          enableCodeFormatting: formattingOptions.enableCodeFormatting,
+        },
+        formattingOptions.enableCodeFormatting,
+        (initialData as Question).codeLanguage || 'javascript'
+      );
+  
+      setMarkdownContent(initialData.markdownContent || updatedMarkdown);
+  
       if ((initialData as Question).codeLanguage) {
-        setFormattingOptions(prev => ({
+        setFormattingOptions((prev) => ({
           ...prev,
-          defaultLanguage: (initialData as Question).codeLanguage || 'javascript'
+          defaultLanguage: (initialData as Question).codeLanguage || 'javascript',
         }));
       }
     }
   }, [initialData, isEditing]);
-
-useEffect(() => {
-  if (showMarkdown && !isMarkdownSyncing && formattingOptions.defaultLanguage) {
-    const shouldUpdate = lastLanguageRef.current !== formattingOptions.defaultLanguage;
-    if (shouldUpdate) {
-      const newMarkdown = generateMarkdown(
-        {
-          id: initialData?.id || uuidv4(),
-          question,
-          answers,
-          difficulty,
-          tags,
-          title,
-          codeLanguage: formattingOptions.defaultLanguage,
-        },
-        formattingOptions.enableCodeFormatting,
-        formattingOptions.defaultLanguage
-      );
-      setMarkdownContent(newMarkdown);
-      lastLanguageRef.current = formattingOptions.defaultLanguage;
+  
+  useEffect(() => {
+    if (showMarkdown && !isMarkdownSyncing) {
+      const shouldUpdate = lastLanguageRef.current !== formattingOptions.defaultLanguage;
+  
+      if (shouldUpdate || markdownContent.trim() === '') {
+        const updatedMarkdown = generateMarkdown(
+          {
+            id: initialData?.id || uuidv4(),
+            question,
+            answers,
+            difficulty,
+            tags,
+            title,
+            codeLanguage: formattingOptions.defaultLanguage,
+            enableCodeFormatting: formattingOptions.enableCodeFormatting,
+          },
+          formattingOptions.enableCodeFormatting,
+          formattingOptions.defaultLanguage
+        );
+  
+        setMarkdownContent(updatedMarkdown);
+        lastLanguageRef.current = formattingOptions.defaultLanguage;
+      }
     }
-  }
-}, [showMarkdown, formattingOptions.defaultLanguage, question, answers, difficulty, tags, title]);
-
- 
+  }, [showMarkdown, formattingOptions.defaultLanguage, question, answers, difficulty, tags, title]);
+  
   useEffect(() => {
     if (showMarkdown && markdownContent && !isMarkdownSyncing) {
       try {
         const parsedData = parseMarkdownContent(markdownContent, formattingOptions);
+  
         if (parsedData) {
           setIsMarkdownSyncing(true);
-          
+  
           const updatedAnswers = parsedData.answers.map((answer, index) => ({
             id: answers[index]?.id || uuidv4(),
             text: answer.text || '',
-            isCorrect: answer.isCorrect || false
+            isCorrect: answer.isCorrect || false,
           }));
-
+  
           setQuestion(parsedData.question.trim());
           setAnswers(updatedAnswers);
-          setAnswerOrder(updatedAnswers.map(a => a.id));
+          setAnswerOrder(updatedAnswers.map((a) => a.id));
           setDifficulty(parsedData.difficulty);
           setTags(parsedData.tags);
-          
+  
+          if (parsedData.codeLanguage && parsedData.codeLanguage !== formattingOptions.defaultLanguage) {
+            setFormattingOptions((prev) => ({
+              ...prev,
+              defaultLanguage: parsedData.codeLanguage as 'javascript' | 'html',
+            }));
+          }
+  
           setTimeout(() => setIsMarkdownSyncing(false), 0);
         }
       } catch (error) {
@@ -253,6 +281,7 @@ useEffect(() => {
       }
     }
   }, [markdownContent, showMarkdown]);
+  
 
   const handleMarkdownUpdate = (newContent: string) => {
     setMarkdownContent(newContent);
