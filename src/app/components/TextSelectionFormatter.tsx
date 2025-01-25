@@ -1,8 +1,12 @@
 import React, { useRef, useState } from "react";
+import { FaUndo } from "react-icons/fa";
 
 const TextSelectionFormatter: React.FC = () => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null); 
   const [format, setFormat] = useState<string>("");
+  const [originalText, setOriginalText] = useState<string>(""); // Stores the text before formatting
+  const [selectionStart, setSelectionStart] = useState<number>(0);
+  const [selectionEnd, setSelectionEnd] = useState<number>(0);
 
   const handleApplyFormat = () => {
     const textArea = textAreaRef.current;
@@ -12,30 +16,48 @@ const TextSelectionFormatter: React.FC = () => {
       return;
     }
 
-    // Get the selection start and end
-    const selectionStart = textArea.selectionStart || 0;
-    const selectionEnd = textArea.selectionEnd || 0;
+    const start = textArea.selectionStart || 0;
+    const end = textArea.selectionEnd || 0;
 
-    if (selectionStart === selectionEnd) {
+    if (start === end) {
       alert("Please select some text to format.");
       return;
     }
 
-    const selectedText = textArea.value.slice(selectionStart, selectionEnd);
+    const selectedText = textArea.value.slice(start, end);
 
     if (!format) {
       alert("Please select a format from the dropdown!");
       return;
     }
 
-    const formattedText = `\`\`\`${format}\n${selectedText}\n\`\`\``;
+    const formattedText = `\`\`\`${format}${selectedText}\`\`\``;
 
-    const beforeText = textArea.value.slice(0, selectionStart);
-    const afterText = textArea.value.slice(selectionEnd);
+    const beforeText = textArea.value.slice(0, start);
+    const afterText = textArea.value.slice(end);
     textArea.value = `${beforeText}${formattedText}${afterText}`;
 
     const newCaretPosition = beforeText.length + formattedText.length;
     textArea.setSelectionRange(newCaretPosition, newCaretPosition);
+
+    // Save original text
+    setOriginalText(textArea.value); // Save original before applying format
+    setSelectionStart(newCaretPosition);
+    setSelectionEnd(newCaretPosition);
+
+    textArea.focus();
+  };
+
+  const handleUndo = () => {
+    const textArea = textAreaRef.current;
+
+    if (!textArea) {
+      console.error("Textarea element not found.");
+      return;
+    }
+    
+    textArea.value = originalText;
+    textArea.setSelectionRange(selectionStart, selectionEnd);
 
     textArea.focus();
   };
@@ -45,7 +67,7 @@ const TextSelectionFormatter: React.FC = () => {
       <textarea
         ref={textAreaRef}
         className="w-full h-48 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-        defaultValue="What is the output of the code below. \n\nConst a = 12;\nConst b = 13;\nsum = a + b;\nconsole.log(sum);"
+        defaultValue="What is the output of the code below. Const a = 12; Const b = 13; sum = a + b; console.log(sum);"
       />
       <div className="mt-4 flex items-center gap-4">
         <select
@@ -63,6 +85,13 @@ const TextSelectionFormatter: React.FC = () => {
         >
           Apply Format
         </button>
+        <div
+          onClick={handleUndo}
+          className="relative cursor-pointer"
+          title="Undo changes"
+        >
+          <FaUndo className="text-xl text-gray-600 hover:text-gray-800" />
+        </div>
       </div>
     </div>
   );
