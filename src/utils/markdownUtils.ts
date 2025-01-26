@@ -81,6 +81,54 @@ export const formatCode = (code: string, language: 'javascript' | 'html'): strin
   return code;
 };
 
+export const processMarkdownBlock = (
+  text: string,
+  language: 'javascript' | 'html',
+  enableFormatting: boolean
+): string => {
+  if (!enableFormatting) return text;
+
+  const lines = text.split('\n');
+  let formattedText = '';
+  let codeBlockLines: string[] = [];
+  let isCurrentlyInCodeBlock = false;
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    const codeCheck = isStrictCodeBlock(trimmedLine);
+
+    if (codeCheck.isCode) {
+      // Start or continue a code block
+      if (!isCurrentlyInCodeBlock) {
+        isCurrentlyInCodeBlock = true;
+        codeBlockLines = [trimmedLine];
+      } else {
+        codeBlockLines.push(trimmedLine);
+      }
+    } else {
+      // Non-code line
+      if (isCurrentlyInCodeBlock) {
+        // Close the previous code block
+        formattedText += `\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n\n`;
+        isCurrentlyInCodeBlock = false;
+        codeBlockLines = [];
+      }
+
+      // Add non-code text if not empty
+      if (trimmedLine) {
+        formattedText += `${line}\n`;
+      }
+    }
+  }
+
+  // Close any remaining code block
+  if (isCurrentlyInCodeBlock && codeBlockLines.length > 0) {
+    formattedText += `\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
+  }
+
+  return formattedText.trim();
+};
+
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
@@ -95,27 +143,16 @@ export const generateMarkdown = (
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
 
-    const processMarkdownBlock = (text: string, language: 'javascript' | 'html'): string => {
-      if (!enableFormatting) return text;
-
-      const lines = text.split('\n');
-      const codeLines = lines.filter(line => isStrictCodeBlock(line.trim()).isCode);
-      
-      if (codeLines.length > 0) {
-        return `\`\`\`${language}\n${text.trim()}\n\`\`\``;
-      }
-
-      return text;
-    };
-
-    const processedQuestion = processMarkdownBlock(question.question, defaultLanguage);
+    // Format the question text
+    const processedQuestion = processMarkdownBlock(question.question, defaultLanguage, enableFormatting);
     md += processedQuestion.trim() + '\n\n';
 
+    // Format the answers
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
           md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
-          const processedAnswer = processMarkdownBlock(answer.text, defaultLanguage);
+          const processedAnswer = processMarkdownBlock(answer.text, defaultLanguage, enableFormatting);
           md += processedAnswer.trim() + '\n\n';
         }
       });
