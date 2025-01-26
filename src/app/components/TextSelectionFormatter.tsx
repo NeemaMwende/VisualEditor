@@ -85,7 +85,7 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
   
       const updatedQuestion =
         questionRef.current.value.slice(0, start) +
-        selectedInfo.text + // Append the original text before formatting
+        selectedInfo.text + 
         ' ' + formattedContent +
         questionRef.current.value.slice(end);
   
