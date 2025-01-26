@@ -15,7 +15,7 @@ export interface MarkdownData {
 }
 
 export interface BaseQuestion {
-  id: string;
+  id?: string;
   title: string;
   question: string;
   answers: Answer[];
@@ -30,6 +30,7 @@ export interface BaseQuestion {
 
 export interface QuestionData extends BaseQuestion {
   type?: 'question' | 'markdown';
+  id: string;
 }
 
 export interface DashboardQuestion extends BaseQuestion {
@@ -39,6 +40,7 @@ export interface DashboardQuestion extends BaseQuestion {
   type?: 'question' | 'markdown';
   enableCodeFormatting?: boolean;
   codeLanguage?: 'javascript' | 'html';
+  id: string;
 }
 
 export interface EditorQuestion extends BaseQuestion {

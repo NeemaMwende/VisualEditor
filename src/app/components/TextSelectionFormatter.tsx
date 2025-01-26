@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaUndo } from "react-icons/fa";
 
 interface TextSelectionFormatterProps {
-  questionRef: React.RefObject<HTMLTextAreaElement>;
+  questionRef: React.RefObject<HTMLTextAreaElement | null>;
   answerRefs: React.RefObject<Array<HTMLTextAreaElement>>;
   onFormat: (formattedText: string, language: 'javascript' | 'html') => void;
   currentQuestion: {
