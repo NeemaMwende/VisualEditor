@@ -19,7 +19,7 @@ interface TextSelectionFormatterProps {
 const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
   questionRef,
   answerRefs,
-  onFormat,
+  //onFormat,
   currentQuestion,
   onQuestionChange,
   onAnswerChange
@@ -66,61 +66,56 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
 
   const handleTextFormat = () => {
     const selectedInfo = getSelectedText();
-  
+
     if (!selectedInfo.text) {
       alert("Please select some text to format.");
       return;
     }
-  
+
     setPreviousState({
       question: currentQuestion.question,
       answers: currentQuestion.answers,
     });
-  
+
     if (selectedInfo.type === 'question' && questionRef.current) {
       const start = questionRef.current.selectionStart;
       const end = questionRef.current.selectionEnd;
-  
+
       const formattedContent = `\`\`\`${format}\n${selectedInfo.text}\n\`\`\``;
-  
+
       const updatedQuestion =
         questionRef.current.value.slice(0, start) +
-        selectedInfo.text + 
-        ' ' + formattedContent +
+        formattedContent +
         questionRef.current.value.slice(end);
-  
+
       onQuestionChange(updatedQuestion);
-      onFormat(selectedInfo.text, format);
     } else if (
       selectedInfo.type === 'answer' &&
       selectedInfo.index !== undefined &&
-      answerRefs.current?.[selectedInfo.index]
+      answerRefs.current[selectedInfo.index]
     ) {
       const textarea = answerRefs.current[selectedInfo.index];
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-  
+
       const formattedContent = `\`\`\`${format}\n${selectedInfo.text}\n\`\`\``;
-  
+
       const updatedAnswers = currentQuestion.answers.map((answer, index) => {
         if (index === selectedInfo.index) {
           return {
             ...answer,
             text:
               textarea.value.slice(0, start) +
-              selectedInfo.text + // Append the original text before formatting
-              ' ' + formattedContent +
+              formattedContent +
               textarea.value.slice(end),
           };
         }
         return answer;
       });
-  
+
       onAnswerChange(updatedAnswers);
-      onFormat(selectedInfo.text, format);
     }
   };
-  
 
   const handleUndo = () => {
     onQuestionChange(previousState.question);
