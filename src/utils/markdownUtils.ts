@@ -248,7 +248,7 @@ export const parseMarkdownContent = (
         }
 
         isInCodeBlock = !isInCodeBlock;
-        currentContent += `${line}\n`; // Treat code blocks as part of the current section
+        currentContent += `${line}\n`; 
         continue;
       }
 
@@ -311,9 +311,6 @@ export const parseMarkdownContent = (
     };
   }
 };
-
-
-
 
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {
