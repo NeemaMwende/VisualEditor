@@ -16,13 +16,13 @@ interface TextSelectionFormatterProps {
   onAnswerChange: (answers: { id: string; text: string; isCorrect: boolean }[]) => void;
 }
 
-const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({ 
+const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
   questionRef,
   answerRefs,
-  onFormat, 
-  currentQuestion, 
+  onFormat,
+  currentQuestion,
   onQuestionChange,
-  onAnswerChange 
+  onAnswerChange
 }) => {
   const [format, setFormat] = useState<'javascript' | 'html'>('javascript');
   const [previousState, setPreviousState] = useState<{
@@ -33,12 +33,11 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
     answers: currentQuestion.answers
   });
 
-  const getSelectedText = (): { 
-    text: string | null, 
-    type: 'question' | 'answer' | null, 
-    index?: number 
+  const getSelectedText = (): {
+    text: string | null;
+    type: 'question' | 'answer' | null;
+    index?: number;
   } => {
-    // Check question textarea first
     if (questionRef.current) {
       const start = questionRef.current.selectionStart;
       const end = questionRef.current.selectionEnd;
@@ -48,7 +47,6 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
       }
     }
 
-    // Check answer textareas
     if (answerRefs.current) {
       for (let i = 0; i < answerRefs.current.length; i++) {
         const textarea = answerRefs.current[i];
@@ -68,49 +66,61 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
 
   const handleTextFormat = () => {
     const selectedInfo = getSelectedText();
-
+  
     if (!selectedInfo.text) {
       alert("Please select some text to format.");
       return;
     }
-
-    // Store previous state for potential undo
+  
     setPreviousState({
       question: currentQuestion.question,
-      answers: currentQuestion.answers
+      answers: currentQuestion.answers,
     });
-
+  
     if (selectedInfo.type === 'question' && questionRef.current) {
       const start = questionRef.current.selectionStart;
       const end = questionRef.current.selectionEnd;
-
-      const formattedQuestion = questionRef.current.value.slice(0, start) + 
-        `\`\`\`${format}\n${selectedInfo.text}\n\`\`\`` + 
+  
+      const formattedContent = `\`\`\`${format}\n${selectedInfo.text}\n\`\`\``;
+  
+      const updatedQuestion =
+        questionRef.current.value.slice(0, start) +
+        selectedInfo.text + // Append the original text before formatting
+        ' ' + formattedContent +
         questionRef.current.value.slice(end);
-      
-      onQuestionChange(formattedQuestion);
+  
+      onQuestionChange(updatedQuestion);
       onFormat(selectedInfo.text, format);
-    } else if (selectedInfo.type === 'answer' && 
-               selectedInfo.index !== undefined && 
-               answerRefs.current?.[selectedInfo.index]) {
+    } else if (
+      selectedInfo.type === 'answer' &&
+      selectedInfo.index !== undefined &&
+      answerRefs.current?.[selectedInfo.index]
+    ) {
       const textarea = answerRefs.current[selectedInfo.index];
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-
+  
+      const formattedContent = `\`\`\`${format}\n${selectedInfo.text}\n\`\`\``;
+  
       const updatedAnswers = currentQuestion.answers.map((answer, index) => {
         if (index === selectedInfo.index) {
-          const formattedAnswer = textarea.value.slice(0, start) + 
-            `\`\`\`${format}\n${selectedInfo.text}\n\`\`\`` + 
-            textarea.value.slice(end);
-          return { ...answer, text: formattedAnswer };
+          return {
+            ...answer,
+            text:
+              textarea.value.slice(0, start) +
+              selectedInfo.text + // Append the original text before formatting
+              ' ' + formattedContent +
+              textarea.value.slice(end),
+          };
         }
         return answer;
       });
-
+  
       onAnswerChange(updatedAnswers);
       onFormat(selectedInfo.text, format);
     }
   };
+  
 
   const handleUndo = () => {
     onQuestionChange(previousState.question);
@@ -134,7 +144,7 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
         >
           Format Selected Text
         </button>
-        <button 
+        <button
           onClick={handleUndo}
           className="text-gray-600 hover:text-gray-800"
           title="Undo last change"

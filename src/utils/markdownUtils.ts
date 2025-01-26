@@ -152,7 +152,7 @@ export const parseMarkdownContent = (
       tags: [],
       markdownContent: '',
       codeLanguage: formattingOptions.defaultLanguage,
-      enableCodeFormatting: formattingOptions.enableCodeFormatting
+      enableCodeFormatting: formattingOptions.enableCodeFormatting,
     };
   }
 
@@ -179,9 +179,9 @@ export const parseMarkdownContent = (
       tags: [] as string[],
       markdownContent: content,
       codeLanguage: detectedLanguage,
-      enableCodeFormatting: enableFormattingMatch 
-        ? enableFormattingMatch[1] === 'true' 
-        : (formattingOptions.enableCodeFormatting || false)
+      enableCodeFormatting: enableFormattingMatch
+        ? enableFormattingMatch[1] === 'true'
+        : formattingOptions.enableCodeFormatting || false,
     };
 
     for (const line of lines) {
@@ -197,11 +197,14 @@ export const parseMarkdownContent = (
           const difficultyValue = parseInt(trimmedLine.substring(11).trim());
           parsedData.difficulty = isNaN(difficultyValue) ? 1 : difficultyValue;
         } else if (trimmedLine.startsWith('tags:')) {
-          parsedData.tags = trimmedLine.substring(5).trim().split(' ').filter(Boolean);
+          parsedData.tags = trimmedLine
+            .substring(5)
+            .trim()
+            .split(' ')
+            .filter(Boolean);
         }
         continue;
       }
-
 
       if (trimmedLine.startsWith('```')) {
         const languageMatch = trimmedLine.match(/```(javascript|html)?/);
@@ -209,7 +212,7 @@ export const parseMarkdownContent = (
           detectedLanguage = languageMatch[1] as 'javascript' | 'html';
           parsedData.codeLanguage = detectedLanguage;
         }
-        
+
         isInCodeBlock = !isInCodeBlock;
         continue;
       }
@@ -247,6 +250,7 @@ export const parseMarkdownContent = (
       });
     }
 
+    // Ensure answers remain separated and in their own sections
     while (parsedData.answers.length < 4) {
       parsedData.answers.push({
         id: (parsedData.answers.length + 1).toString(),
@@ -266,7 +270,7 @@ export const parseMarkdownContent = (
       tags: [],
       markdownContent: content,
       codeLanguage: formattingOptions.defaultLanguage,
-      enableCodeFormatting: formattingOptions.enableCodeFormatting
+      enableCodeFormatting: formattingOptions.enableCodeFormatting,
     };
   }
 };
