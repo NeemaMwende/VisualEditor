@@ -267,9 +267,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
             text: answer.text || '',
             isCorrect: answer.isCorrect || false,
           }));
-  
+
+          if (parsedData.answers.length > 4) {
+            parsedData.answers = parsedData.answers.slice(0, 4);
+          }
+          
+          setAnswers(parsedData.answers.map((answer, index) => ({
+            id: answers[index]?.id || uuidv4(),
+            text: answer.text || '',
+            isCorrect: answer.isCorrect || false,
+          })));
           setQuestion(parsedData.question.trim());
-          setAnswers(updatedAnswers);
+          // setAnswers(updatedAnswers);
           setAnswerOrder(updatedAnswers.map((a) => a.id));
           setDifficulty(parsedData.difficulty);
           setTags(parsedData.tags);

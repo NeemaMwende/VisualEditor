@@ -201,7 +201,7 @@ export const parseMarkdownContent = (
 
     const lines = content.split('\n');
     let inFrontMatter = false;
-    let currentSection = '';
+    let currentSection = 'question';
     let currentContent = '';
     let isInCodeBlock = false;
 
@@ -248,50 +248,53 @@ export const parseMarkdownContent = (
         }
 
         isInCodeBlock = !isInCodeBlock;
+        currentContent += `${line}\n`; // Treat code blocks as part of the current section
         continue;
       }
 
       if (isInCodeBlock) {
-        currentContent += line + '\n';
+        currentContent += `${line}\n`;
         continue;
       }
 
       if (trimmedLine.startsWith('#')) {
         if (currentContent) {
-          parsedData.answers.push({
-            id: (parsedData.answers.length + 1).toString(),
-            text: currentContent.trim(),
-            isCorrect: currentSection.includes('Correct'),
-          });
+          if (currentSection === 'question') {
+            parsedData.question += currentContent.trim() + '\n';
+          } else {
+            parsedData.answers.push({
+              id: (parsedData.answers.length + 1).toString(),
+              text: currentContent.trim(),
+              isCorrect: currentSection.includes('Correct'),
+            });
+          }
           currentContent = '';
         }
         currentSection = trimmedLine;
         continue;
       }
 
-      if (currentSection === '') {
-        if (trimmedLine) parsedData.question += line + '\n';
+      if (currentSection === 'question') {
+        parsedData.question += `${line}\n`;
       } else {
-        if (trimmedLine) currentContent += line + '\n';
+        currentContent += `${line}\n`;
       }
     }
 
     if (currentContent) {
-      parsedData.answers.push({
-        id: (parsedData.answers.length + 1).toString(),
-        text: currentContent.trim(),
-        isCorrect: currentSection.includes('Correct'),
-      });
+      if (currentSection === 'question') {
+        parsedData.question += currentContent.trim() + '\n';
+      } else {
+        parsedData.answers.push({
+          id: (parsedData.answers.length + 1).toString(),
+          text: currentContent.trim(),
+          isCorrect: currentSection.includes('Correct'),
+        });
+      }
     }
 
-    // Ensure answers remain separated and in their own sections
-    while (parsedData.answers.length < 4) {
-      parsedData.answers.push({
-        id: (parsedData.answers.length + 1).toString(),
-        text: '',
-        isCorrect: false,
-      });
-    }
+    // Strictly limit answers to 4
+    parsedData.answers = parsedData.answers.slice(0, 4);
 
     return parsedData;
   } catch (error) {
@@ -308,6 +311,8 @@ export const parseMarkdownContent = (
     };
   }
 };
+
+
 
 
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
