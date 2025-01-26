@@ -73,7 +73,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
   const answerRefs = useRef<Array<HTMLTextAreaElement>>([]);
   
   const handleFormatText = (formattedText: string, language: 'javascript' | 'html') => {
-    // Ensure proper selection handling
     const selectionStart = questionRef.current?.selectionStart || 0;
     const selectionEnd = questionRef.current?.selectionEnd || 0;
   
@@ -81,14 +80,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
     const updatedQuestion =
       question.slice(0, selectionStart).trimEnd() + // Preserve text before selection
       `\n\`\`\`${language}\n${formattedText}\n\`\`\`\n` + // Add formatted block
-      question.slice(selectionEnd).trimStart(); // Preserve text after selection
+      question.slice(selectionEnd).trimStart(); 
   
-    // Generate markdown content with the updated question while keeping answers intact
+    
     const newMarkdownContent = generateMarkdown(
       {
         id: initialData?.id || uuidv4(),
-        question: updatedQuestion, // Use updated question
-        answers, // Retain original answers
+        question: updatedQuestion, 
+        answers,
         difficulty,
         tags,
         title,
@@ -98,7 +97,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ onSave, onBack, initial
       language
     );
   
-    // Update the question and markdown content
     setMarkdownContent(newMarkdownContent);
     setQuestion(updatedQuestion);
   };
