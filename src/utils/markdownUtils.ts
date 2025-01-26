@@ -98,7 +98,6 @@ export const processMarkdownBlock = (
     const codeCheck = isStrictCodeBlock(trimmedLine);
 
     if (codeCheck.isCode) {
-      // Start or continue a code block
       if (!isCurrentlyInCodeBlock) {
         isCurrentlyInCodeBlock = true;
         codeBlockLines = [trimmedLine];
@@ -108,7 +107,6 @@ export const processMarkdownBlock = (
     } else {
       // Non-code line
       if (isCurrentlyInCodeBlock) {
-        // Close the previous code block
         formattedText += `\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n\n`;
         isCurrentlyInCodeBlock = false;
         codeBlockLines = [];
@@ -121,7 +119,6 @@ export const processMarkdownBlock = (
     }
   }
 
-  // Close any remaining code block
   if (isCurrentlyInCodeBlock && codeBlockLines.length > 0) {
     formattedText += `\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
   }
