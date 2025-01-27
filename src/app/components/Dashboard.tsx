@@ -229,7 +229,10 @@ const Dashboard = () => {
 
   const handleSaveQuestion = async (questionData: QuestionData) => {
     if (!questionData.question.trim()) return;
-
+  
+    const enableCodeFormatting = true; 
+    const defaultLanguage = 'javascript'; 
+  
     const newQuestionData: DashboardQuestion = {
       id: currentlyEditing || uuidv4(),
       title: questionData.title,
@@ -239,22 +242,29 @@ const Dashboard = () => {
       tags: questionData.tags,
       isExpanded: false,
       onEditMarkdown: () => {},
-      type: 'question'
+      type: 'question',
+      markdownContent: generateMarkdown(
+        questionData,
+        enableCodeFormatting,
+        defaultLanguage
+      ),
     };
-
+  
     if (currentlyEditing) {
-      const updatedQuestions = questions.map(q =>
+      const updatedQuestions = questions.map((q) =>
         q.id === currentlyEditing ? newQuestionData : q
       );
       setQuestions(updatedQuestions);
     } else {
       setQuestions([...questions, newQuestionData]);
     }
-
+  
     setShowEditor(false);
     setInitialData(undefined);
     setCurrentlyEditing(null);
   };
+  
+  
 
   const handleEdit = (question: Question) => {
     setCurrentlyEditing(question.id);
