@@ -230,8 +230,8 @@ const Dashboard = () => {
   const handleSaveQuestion = async (questionData: QuestionData) => {
     if (!questionData.question.trim()) return;
   
-    const enableCodeFormatting = true; // Define or fetch this setting
-    const defaultLanguage = 'javascript'; // Default to 'javascript' or dynamic value
+    const enableCodeFormatting = true; 
+    const defaultLanguage = 'javascript'; 
   
     const newQuestionData: DashboardQuestion = {
       id: currentlyEditing || uuidv4(),
