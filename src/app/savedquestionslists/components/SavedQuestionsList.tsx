@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MarkdownData, MarkdownEditData, DashboardQuestion } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
-import { Trash2, CheckSquare, Square } from 'lucide-react';
+import { Trash2, CheckSquare, Square, RefreshCw } from 'lucide-react';
 import { Question } from '../../components/Dashboard';
 
 interface SavedQuestionsListProps {
@@ -40,7 +40,51 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     originalTitle: string;
   } | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const refreshDirectory = async () => {
+    if (!fileSystem.handle) {
+      alert('Please select a directory first');
+      return;
+    }
+  
+    setIsRefreshing(true);
+    try {
+      const loadedQuestions: DashboardQuestion[] = [];
+      for await (const entry of fileSystem.handle.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+          if (entry instanceof FileSystemFileHandle) {
+            const file = await entry.getFile();
+            const content = await file.text();
+            try {
+              const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
+              if (parsedData) {
+                loadedQuestions.push({
+                  ...parsedData,
+                  id: entry.name.replace('.md', ''),
+                  markdownContent: content,
+                  type: 'question',
+                  isExpanded: false,
+                  title: parsedData.title || entry.name.replace('.md', ''),
+                  onEditMarkdown: () => {},
+                });
+              }
+            } catch (error) {
+              console.error(`Error parsing ${entry.name}:`, error);
+            }
+          }
+        }
+      }
+      setQuestions(loadedQuestions);
+      setSelectedQuestions([]); // Clear selections after refresh
+    } catch (error) {
+      console.error('Error refreshing directory:', error);
+      alert('Failed to refresh directory. Please check permissions and try again.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+  
   
   const handleDelete = async (id: string) => {
     if (!fileSystem.handle) return;
@@ -200,11 +244,24 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-        <div className="w-full sm:w-auto">
+      <div className="w-full sm:w-auto flex items-center gap-2">
           {fileSystem.handle && (
-            <span className="text-gray-600 text-sm break-all">
-              Working directory: {fileSystem.path}
-            </span>
+            <>
+              <span className="text-gray-600 text-sm break-all">
+                Working directory: {fileSystem.path}
+              </span>
+              <button
+                onClick={refreshDirectory}
+                disabled={isRefreshing}
+                className="p-2 text-gray-600 hover:text-blue-500 hover:bg-gray-100 rounded-full transition-colors"
+                title="Refresh directory"
+              >
+                <RefreshCw 
+                  size={16} 
+                  className={`${isRefreshing ? 'animate-spin' : ''}`}
+                />
+              </button>
+            </>
           )}
         </div>
         {selectedQuestions.length > 0 && (
