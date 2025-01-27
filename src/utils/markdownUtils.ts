@@ -27,7 +27,22 @@ export interface FormattingOptions {
   defaultLanguage: 'javascript' | 'html';
 }
 
-const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascript' | 'html' | '' } => {
+export const synchronizeMarkdownFormatting = (
+  text: string,
+  enableFormatting: boolean,
+  language: 'javascript' | 'html'
+  ): string => {
+  if (!enableFormatting) {
+    return text.replace(/```(javascript|html)?\n([\s\S]*?)\n```/g, '$2');
+  }
+
+  return text.replace(/```(javascript|html)?\n([\s\S]*?)\n```/g, 
+    (_, __, code) => `\n\n\`\`\`${language}\n${code}\n\`\`\``
+  );
+};
+
+
+export const detectCodeLanguage = (code: string): 'javascript' | 'html' | null => {
   const jsPatterns = [
     /^(const|let|var|function)\s+\w+/,
     /^(export\s+)?(class)\s+\w+/,
@@ -47,12 +62,31 @@ const isStrictCodeBlock = (text: string): { isCode: boolean; language: 'javascri
     /^<(div|span|p|a|button|input|form|label|!DOCTYPE)/i
   ];
 
-  const jsMatches = jsPatterns.filter(pattern => pattern.test(text)).length;
-  const htmlMatches = htmlPatterns.filter(pattern => pattern.test(text)).length;
+  const jsMatches = jsPatterns.filter(pattern => pattern.test(code.trim())).length;
+  const htmlMatches = htmlPatterns.filter(pattern => pattern.test(code.trim())).length;
 
-  if (jsMatches > 0 && jsMatches >= htmlMatches) return { isCode: true, language: 'javascript' };
-  if (htmlMatches > 0) return { isCode: true, language: 'html' };
-  return { isCode: false, language: '' };
+  if (jsMatches > 0 && jsMatches >= htmlMatches) return 'javascript';
+  if (htmlMatches > 0) return 'html';
+  return null;
+};
+
+
+export const updateMarkdownCodeBlocks = (
+  markdown: string,
+  formattingOptions: {
+    enableCodeFormatting: boolean;
+    defaultLanguage: 'javascript' | 'html';
+  }
+): string => {
+  if (!formattingOptions.enableCodeFormatting) {
+    return markdown.replace(/```(javascript|html)?\n([\s\S]*?)\n```/g, '$2');
+  }
+
+  return markdown.replace(/```(javascript|html)?\n([\s\S]*?)\n```/g, (match, lang, code) => {
+    const detectedLang = detectCodeLanguage(code);
+    const language = detectedLang || formattingOptions.defaultLanguage;
+    return `\n\n\`\`\`${language}\n${code}\n\`\`\``;
+  });
 };
 
 export const formatCode = (code: string, language: 'javascript' | 'html'): string => {
@@ -66,7 +100,6 @@ export const formatCode = (code: string, language: 'javascript' | 'html'): strin
     }).join('\n');
   }
   
-  // Format HTML code
   if (language === 'html') {
     let indentLevel = 0;
     return lines.map(line => {
@@ -80,6 +113,7 @@ export const formatCode = (code: string, language: 'javascript' | 'html'): strin
   
   return code;
 };
+
 
 export const processMarkdownBlock = (
   text: string,
@@ -95,9 +129,9 @@ export const processMarkdownBlock = (
 
   for (const line of lines) {
     const trimmedLine = line.trim();
-    const codeCheck = isStrictCodeBlock(trimmedLine);
+    const codeCheck = trimmedLine.startsWith('```');
 
-    if (codeCheck.isCode) {
+    if (codeCheck) {
       if (!isCurrentlyInCodeBlock) {
         isCurrentlyInCodeBlock = true;
         codeBlockLines = [trimmedLine];
@@ -105,14 +139,11 @@ export const processMarkdownBlock = (
         codeBlockLines.push(trimmedLine);
       }
     } else {
-      // Non-code line
       if (isCurrentlyInCodeBlock) {
-        formattedText += `\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n\n`;
+        formattedText += `\n\n\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\``;
         isCurrentlyInCodeBlock = false;
         codeBlockLines = [];
       }
-
-      // Add non-code text if not empty
       if (trimmedLine) {
         formattedText += `${line}\n`;
       }
@@ -120,7 +151,7 @@ export const processMarkdownBlock = (
   }
 
   if (isCurrentlyInCodeBlock && codeBlockLines.length > 0) {
-    formattedText += `\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
+    formattedText += `\n\n\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\``;
   }
 
   return formattedText.trim();
