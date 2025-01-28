@@ -18,7 +18,7 @@ interface SavedQuestionsListProps {
 }
 
 interface ParsedMarkdownData {
-  codeLanguage: any | "javascript" | "html" | undefined;
+  codeLanguage: "javascript" | "html" | undefined;
   title: string;
   question: string;
   answers: { id: string; text: string; isCorrect: boolean; }[];
