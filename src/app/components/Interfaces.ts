@@ -56,7 +56,6 @@ export interface DashboardQuestion {
   enableCodeFormatting?: boolean; 
 }
 
-
 export interface EditorQuestion extends BaseQuestion {
   initialData?: Answer[];
   isEditing: boolean;

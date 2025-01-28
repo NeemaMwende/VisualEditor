@@ -131,21 +131,17 @@ const Dashboard = () => {
   
       const loadedQuestions: DashboardQuestion[] = [];
   
-      // Iterate over the directory entries
       for await (const entry of handle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-          // Type check to ensure it's a FileSystemFileHandle
           if ((entry as FileSystemFileHandle).getFile) {
             const fileHandle = entry as FileSystemFileHandle;
             const file = await fileHandle.getFile();
             const content = await file.text();
   
             try {
-              // Parse markdown content
               const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
   
               if (parsedData) {
-                // Push the question with properly assigned default values
                 loadedQuestions.push({
                   ...parsedData,
                   id: entry.name.replace('.md', ''),
@@ -154,7 +150,7 @@ const Dashboard = () => {
                   isExpanded: false,
                   title: parsedData.title || entry.name.replace('.md', ''),
                   onEditMarkdown: () => {},
-                  enableCodeFormatting: parsedData.enableCodeFormatting ?? true, // Default to true if undefined
+                  enableCodeFormatting: parsedData.enableCodeFormatting ?? true,
                 });
               }
             } catch (error) {
