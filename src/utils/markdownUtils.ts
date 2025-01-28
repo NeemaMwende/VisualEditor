@@ -26,7 +26,6 @@ export interface FormattingOptions {
   enableCodeFormatting: boolean;
   defaultLanguage: 'javascript' | 'html';
 }
-
 export const synchronizeMarkdownFormatting = (
   text: string,
   enableFormatting: boolean,
@@ -36,10 +35,13 @@ export const synchronizeMarkdownFormatting = (
     return cleanupCodeBlocks(text, language);
   }
 
+  // Preserve existing language tags if present, otherwise use the specified language
   const cleaned = cleanupCodeBlocks(text, language);
-  return cleaned.replace(/```(javascript|html)?\n([\s\S]*?)\n```/g, 
-    (_, __, code) => `\n\`\`\`${language}\n${code.trim()}\n\`\`\``
-  );
+  return cleaned.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, lang, code) => {
+    // Keep the original language tag if it exists, otherwise use the specified language
+    const codeLanguage = lang || language;
+    return `\n\`\`\`${codeLanguage}\n${code.trim()}\n\`\`\``;
+  });
 };
 
 
@@ -118,7 +120,7 @@ export const formatCode = (code: string, language: 'javascript' | 'html'): strin
 
 export const processMarkdownBlock = (
   text: string,
-  language: 'javascript' | 'html',
+  defaultLanguage: 'javascript' | 'html',
   enableFormatting: boolean
 ): string => {
   if (!enableFormatting) return text;
@@ -127,6 +129,7 @@ export const processMarkdownBlock = (
   let formattedText = '';
   let codeBlockLines: string[] = [];
   let isInCodeBlock = false;
+  let currentLanguage = defaultLanguage;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -136,11 +139,19 @@ export const processMarkdownBlock = (
       if (!isInCodeBlock) {
         isInCodeBlock = true;
         codeBlockLines = [];
+        // Extract language if specified
+        const langMatch = trimmedLine.match(/^```(\w+)/);
+        if (langMatch && (langMatch[1] === 'javascript' || langMatch[1] === 'html')) {
+          currentLanguage = langMatch[1] as 'javascript' | 'html';
+        } else {
+          currentLanguage = defaultLanguage;
+        }
       } else {
         isInCodeBlock = false;
         if (codeBlockLines.length > 0) {
-          formattedText += `\n\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
+          formattedText += `\n\`\`\`${currentLanguage}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
           codeBlockLines = [];
+          currentLanguage = defaultLanguage;
         }
       }
       continue;
@@ -153,13 +164,13 @@ export const processMarkdownBlock = (
     }
   }
 
- 
   if (isInCodeBlock && codeBlockLines.length > 0) {
-    formattedText += `\n\`\`\`${language}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
+    formattedText += `\n\`\`\`${currentLanguage}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
   }
 
   return formattedText.trim();
 };
+
 
 export const generateMarkdown = (
   question: BaseQuestion,
@@ -176,14 +187,12 @@ export const generateMarkdown = (
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
 
-    // Process question text
     const questionText = question.question.trim();
     if (questionText) {
       const processedQuestion = processMarkdownBlock(questionText, defaultLanguage, enableFormatting);
       md += processedQuestion + '\n\n';
     }
 
-    // Process answers
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
@@ -216,7 +225,7 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
     }
   }
 
-  // If we found code blocks, combine them into a single block
+  // combine code blocks into a single block
   if (codeBlocks.length > 0) {
     normalized = normalized.replace(/```(?:javascript|html)?\n[\s\S]*?\n```/g, '').trim();
     

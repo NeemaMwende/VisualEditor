@@ -314,10 +314,10 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   const handleSave = async () => {
     if (!title.trim()) {
-      alert('Please provide a title');
+      alert("Please provide a title");
       return;
     }
-
+  
     const savedData: Question = {
       id: initialData?.id || uuidv4(),
       question,
@@ -325,43 +325,58 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       difficulty,
       tags,
       title,
-      type: 'question',
+      type: "question",
       markdownContent,
       codeLanguage: formattingOptions.defaultLanguage,
-      enableCodeFormatting: formattingOptions.enableCodeFormatting
+      enableCodeFormatting: formattingOptions.enableCodeFormatting,
     };
-
+  
     try {
       // Generate markdown content
-      const markdownContent = generateMarkdown(
+      const generatedMarkdown = generateMarkdown(
         savedData,
         formattingOptions.enableCodeFormatting,
         formattingOptions.defaultLanguage
       );
-
-      // Update local storage
-      const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
+  
+      // Save to file system if handle exists
+      if (fileSystem?.handle) {
+        const filename = `${title.toLowerCase().replace(/\s+/g, "-")}.md`;
+  
+        // If editing and title changed, remove old file
+        if (isEditing && initialData?.title !== title) {
+          const oldFilename = `${initialData?.title
+            .toLowerCase()
+            .replace(/\s+/g, "-")}.md`;
+          try {
+            await fileSystem.handle.removeEntry(oldFilename);
+          } catch (error) {
+            if ((error as Error).name !== "NotFoundError") {
+              console.error("Error removing old file:", error);
+            }
+          }
+        }
+  
+        // Save new file
+        const fileHandle = await fileSystem.handle.getFileHandle(filename, {
+          create: true,
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(generatedMarkdown || ""); // Default to empty string
+        await writable.close();
+      }
+  
+      // Save to local storage
+      const existingQuestions = JSON.parse(
+        localStorage.getItem("questions") || "[]"
+      );
       const updatedQuestions = isEditing
         ? existingQuestions.map((q: Question) =>
             q.id === initialData?.id ? savedData : q
           )
         : [...existingQuestions, savedData];
       localStorage.setItem("questions", JSON.stringify(updatedQuestions));
-
-      // Save to file system if handle exists
-      if (fileSystem?.handle) {
-        const filename = `${title.toLowerCase().replace(/\s+/g, '-')}.md`;
-        try {
-          const fileHandle = await fileSystem.handle.getFileHandle(filename, { create: true });
-          const writable = await fileHandle.createWritable();
-          await writable.write(markdownContent);
-          await writable.close();
-        } catch (error) {
-          console.error('Error saving to file system:', error);
-          throw new Error('Failed to save to file system');
-        }
-      }
-
+  
       onSave(savedData);
       alert("Saved successfully!");
     } catch (error) {
@@ -369,7 +384,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       alert("Failed to save. Please try again.");
     }
   };
-
+  
   const handleBack = () => {
     if (question.trim() || answers.some(a => a.text.trim())) {
       const confirm = window.confirm('You have unsaved changes. Are you sure you want to go back?');
