@@ -14,6 +14,10 @@ interface QuestionEditorProps {
   initialData?: EditorQuestion | Question;
   isEditing?: boolean;
   onSaveMarkdown?: (markdownData: MarkdownData) => void;
+  fileSystem?: {
+    handle: FileSystemDirectoryHandle | null;
+    path: string;
+  };
 }
 
 interface FormattingOptions {
@@ -45,6 +49,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onBack,
   initialData,
   isEditing = false,
+  fileSystem,
 }) => {
   const [question, setQuestion] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
@@ -307,7 +312,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setAnswers(reorderedAnswers);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       alert('Please provide a title');
       return;
@@ -327,14 +332,36 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     };
 
     try {
+      // Generate markdown content
+      const markdownContent = generateMarkdown(
+        savedData,
+        formattingOptions.enableCodeFormatting,
+        formattingOptions.defaultLanguage
+      );
+
+      // Update local storage
       const existingQuestions = JSON.parse(localStorage.getItem("questions") || "[]");
       const updatedQuestions = isEditing
         ? existingQuestions.map((q: Question) =>
             q.id === initialData?.id ? savedData : q
           )
         : [...existingQuestions, savedData];
-
       localStorage.setItem("questions", JSON.stringify(updatedQuestions));
+
+      // Save to file system if handle exists
+      if (fileSystem?.handle) {
+        const filename = `${title.toLowerCase().replace(/\s+/g, '-')}.md`;
+        try {
+          const fileHandle = await fileSystem.handle.getFileHandle(filename, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(markdownContent);
+          await writable.close();
+        } catch (error) {
+          console.error('Error saving to file system:', error);
+          throw new Error('Failed to save to file system');
+        }
+      }
+
       onSave(savedData);
       alert("Saved successfully!");
     } catch (error) {

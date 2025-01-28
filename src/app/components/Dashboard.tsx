@@ -309,6 +309,7 @@ const Dashboard = () => {
                   onSaveMarkdown={handleSaveMarkdown}
                   initialData={initialData}
                   isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
+                  fileSystem={fileSystem}
                 />
               ) : (
                 <SavedQuestionsList

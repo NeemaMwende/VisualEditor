@@ -164,7 +164,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     });
   };
   
-  
   const saveMarkdownChanges = async () => {
     if (!fileSystem.handle || !editingMarkdown) {
       alert(fileSystem.handle ? 'No changes to save' : 'Please select a directory first');
@@ -183,22 +182,26 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       }
   
       const updatedTitle = parsedData.title || editingMarkdown.originalTitle;
+      const newFilename = `${updatedTitle.toLowerCase().replace(/\s+/g, '-')}.md`;
       
-      let fileHandle: FileSystemFileHandle;
-      try {
-        fileHandle = await fileSystem.handle.getFileHandle(editingMarkdown.filename);
-      } catch (error) {
-        if ((error as Error).name === 'NotFoundError') {
-          fileHandle = await fileSystem.handle.getFileHandle(editingMarkdown.filename, { create: true });
-        } else {
-          throw error;
+      // If title changed, delete old file and create new one
+      if (newFilename !== editingMarkdown.filename) {
+        try {
+          await fileSystem.handle.removeEntry(editingMarkdown.filename);
+        } catch (error) {
+          if ((error as Error).name !== 'NotFoundError') {
+            throw error;
+          }
         }
       }
   
+      // Save new file
+      const fileHandle = await fileSystem.handle.getFileHandle(newFilename, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(editingMarkdown.content);
       await writable.close();
   
+      // Update questions state
       setQuestions(prevQuestions =>
         prevQuestions.map(q =>
           q.id === editingMarkdown.id
@@ -213,7 +216,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
                 difficulty: parsedData.difficulty,
                 tags: parsedData.tags,
                 markdownContent: editingMarkdown.content,
-                enableCodeFormatting: originalQuestion?.enableCodeFormatting, 
+                enableCodeFormatting: originalQuestion?.enableCodeFormatting,
                 type: 'question'
               }
             : q
@@ -221,6 +224,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       );
   
       setEditingMarkdown(null);
+      
     } catch (error) {
       console.error('Error saving markdown changes:', error);
       alert('Error saving changes: ' + ((error as Error).message || 'Please check the markdown format and try again.'));
