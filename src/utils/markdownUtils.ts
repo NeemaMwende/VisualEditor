@@ -21,7 +21,6 @@ export interface MarkdownData {
   createdAt: number;
 }
 
-
 export interface FormattingOptions {
   enableCodeFormatting: boolean;
   defaultLanguage: 'javascript' | 'html';
@@ -43,7 +42,6 @@ export const synchronizeMarkdownFormatting = (
     return `\n\`\`\`${codeLanguage}\n${code.trim()}\n\`\`\``;
   });
 };
-
 
 export const detectCodeLanguage = (code: string): 'javascript' | 'html' | null => {
   const jsPatterns = [
@@ -72,7 +70,6 @@ export const detectCodeLanguage = (code: string): 'javascript' | 'html' | null =
   if (htmlMatches > 0) return 'html';
   return null;
 };
-
 
 export const updateMarkdownCodeBlocks = (
   markdown: string,
@@ -116,7 +113,6 @@ export const formatCode = (code: string, language: 'javascript' | 'html'): strin
   
   return code;
 };
-
 
 export const processMarkdownBlock = (
   text: string,
@@ -170,7 +166,6 @@ export const processMarkdownBlock = (
 
   return formattedText.trim();
 };
-
 
 export const generateMarkdown = (
   question: BaseQuestion,
