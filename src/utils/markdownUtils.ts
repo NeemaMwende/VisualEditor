@@ -176,14 +176,12 @@ export const generateMarkdown = (
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
 
-    // Process question text
     const questionText = question.question.trim();
     if (questionText) {
       const processedQuestion = processMarkdownBlock(questionText, defaultLanguage, enableFormatting);
       md += processedQuestion + '\n\n';
     }
 
-    // Process answers
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
@@ -216,7 +214,7 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
     }
   }
 
-  // If we found code blocks, combine them into a single block
+  // combine code blocks into a single block
   if (codeBlocks.length > 0) {
     normalized = normalized.replace(/```(?:javascript|html)?\n[\s\S]*?\n```/g, '').trim();
     

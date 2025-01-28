@@ -166,70 +166,84 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   
   const saveMarkdownChanges = async () => {
     if (!fileSystem.handle || !editingMarkdown) {
-      alert(fileSystem.handle ? 'No changes to save' : 'Please select a directory first');
+      alert(
+        fileSystem.handle
+          ? "No changes to save"
+          : "Please select a directory first"
+      );
       return;
     }
   
     try {
-      const originalQuestion = questions.find(q => q.id === editingMarkdown.id);
+      const originalQuestion = questions.find(
+        (q) => q.id === editingMarkdown.id
+      );
       const parsedData = parseMarkdownContent(editingMarkdown.content, {
         enableCodeFormatting: originalQuestion?.enableCodeFormatting ?? false,
-        defaultLanguage: originalQuestion?.codeLanguage || 'javascript'
+        defaultLanguage: originalQuestion?.codeLanguage || "javascript",
       }) as ParsedMarkdownData;
   
       if (!parsedData) {
-        throw new Error('Invalid markdown format');
+        throw new Error("Invalid markdown format");
       }
   
       const updatedTitle = parsedData.title || editingMarkdown.originalTitle;
-      const newFilename = `${updatedTitle.toLowerCase().replace(/\s+/g, '-')}.md`;
-      
-      // If title changed, delete old file and create new one
+      const newFilename = `${updatedTitle
+        .toLowerCase()
+        .replace(/\s+/g, "-")}.md`;
+  
+      // Handle file rename if title changed
       if (newFilename !== editingMarkdown.filename) {
         try {
           await fileSystem.handle.removeEntry(editingMarkdown.filename);
         } catch (error) {
-          if ((error as Error).name !== 'NotFoundError') {
+          if ((error as Error).name !== "NotFoundError") {
             throw error;
           }
         }
       }
   
-      // Save new file
-      const fileHandle = await fileSystem.handle.getFileHandle(newFilename, { create: true });
+      // Save updated content to file
+      const fileHandle = await fileSystem.handle.getFileHandle(newFilename, {
+        create: true,
+      });
       const writable = await fileHandle.createWritable();
-      await writable.write(editingMarkdown.content);
+      await writable.write(editingMarkdown.content || ""); 
       await writable.close();
   
       // Update questions state
-      setQuestions(prevQuestions =>
-        prevQuestions.map(q =>
+      setQuestions((prevQuestions) =>
+        prevQuestions.map((q) =>
           q.id === editingMarkdown.id
             ? {
                 ...q,
                 title: updatedTitle,
                 question: parsedData.question,
-                answers: parsedData.answers.map(answer => ({
+                answers: parsedData.answers.map((answer) => ({
                   ...answer,
-                  id: answer.id || Math.random().toString(36).substr(2, 9)
+                  id: answer.id || Math.random().toString(36).substr(2, 9),
                 })),
                 difficulty: parsedData.difficulty,
                 tags: parsedData.tags,
                 markdownContent: editingMarkdown.content,
                 enableCodeFormatting: originalQuestion?.enableCodeFormatting,
-                type: 'question'
+                type: "question",
               }
             : q
         )
       );
   
       setEditingMarkdown(null);
-      
     } catch (error) {
-      console.error('Error saving markdown changes:', error);
-      alert('Error saving changes: ' + ((error as Error).message || 'Please check the markdown format and try again.'));
+      console.error("Error saving markdown changes:", error);
+      alert(
+        "Error saving changes: " +
+          ((error as Error).message ||
+            "Please check the markdown format and try again.")
+      );
     }
   };
+  
 
   const toggleSelect = (id: string) => {
     setSelectedQuestions(prev => 

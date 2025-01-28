@@ -228,10 +228,10 @@ const Dashboard = () => {
   };
 
   const handleSaveQuestion = async (questionData: QuestionData) => {
-    if (!questionData.question.trim()) return;
+    if (!questionData.question.trim() || !fileSystem.handle) return;
   
-    const enableCodeFormatting = true; 
-    const defaultLanguage = 'javascript'; 
+    const enableCodeFormatting = true;
+    const defaultLanguage = "javascript";
   
     const newQuestionData: DashboardQuestion = {
       id: currentlyEditing || uuidv4(),
@@ -239,10 +239,10 @@ const Dashboard = () => {
       question: questionData.question,
       answers: questionData.answers,
       difficulty: questionData.difficulty,
-      tags: questionData.tags,
+      tags: questionData.tags, 
       isExpanded: false,
       onEditMarkdown: () => {},
-      type: 'question',
+      type: "question",
       markdownContent: generateMarkdown(
         questionData,
         enableCodeFormatting,
@@ -250,22 +250,45 @@ const Dashboard = () => {
       ),
     };
   
-    if (currentlyEditing) {
-      const updatedQuestions = questions.map((q) =>
-        q.id === currentlyEditing ? newQuestionData : q
+    try {
+      // Generate markdown content
+      const markdownContent = generateMarkdown(
+        newQuestionData,
+        enableCodeFormatting,
+        defaultLanguage
       );
-      setQuestions(updatedQuestions);
-    } else {
-      setQuestions([...questions, newQuestionData]);
+  
+      // Save to file system
+      const filename = `${questionData.title
+        .toLowerCase()
+        .replace(/\s+/g, "-")}.md`;
+      const fileHandle = await fileSystem.handle.getFileHandle(filename, {
+        create: true,
+      });
+      const writable = await fileHandle.createWritable();
+      await writable.write(markdownContent || "");
+      await writable.close();
+  
+      // Update state
+      if (currentlyEditing) {
+        setQuestions(
+          questions.map((q) =>
+            q.id === currentlyEditing ? newQuestionData : q
+          )
+        );
+      } else {
+        setQuestions([...questions, newQuestionData]);
+      }
+  
+      setShowEditor(false);
+      setInitialData(undefined);
+      setCurrentlyEditing(null);
+    } catch (error) {
+      console.error("Error saving question:", error);
+      alert("Failed to save question. Please try again.");
     }
-  
-    setShowEditor(false);
-    setInitialData(undefined);
-    setCurrentlyEditing(null);
   };
-  
-  
-
+   
   const handleEdit = (question: Question) => {
     setCurrentlyEditing(question.id);
     const questionData: Question = {
