@@ -1,8 +1,9 @@
-"use client"
+"use client";
+
 import { useState } from 'react';
 import SavedQuestionsList from './components/SavedQuestionsList';
+import { DashboardQuestion } from '../components/Interfaces'; 
 import { BaseQuestion, MarkdownData, MarkdownEditData } from '../components/Interfaces';
-import { DashboardQuestion } from '@/app/components/Dashboard';
 
 export default function Home() {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
@@ -12,13 +13,11 @@ export default function Home() {
     path: '',
   });
 
-  const handleEdit = (question: BaseQuestion | DashboardQuestion) => {
-   
+  const handleEdit = (question: BaseQuestion | DashboardQuestion) => { 
     console.log('Editing question:', question);
   };
 
-  const handleEditMarkdown = (markdown: MarkdownEditData) => {
-    
+  const handleEditMarkdown = (markdown: MarkdownEditData) => { 
     console.log('Editing markdown:', markdown);
   };
 

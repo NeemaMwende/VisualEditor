@@ -6,6 +6,7 @@ import { Folder, Plus } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { QuestionSkeleton, QuestionEditorSkeleton } from '../Skeleton';
 import dynamic from 'next/dynamic';
+import { DashboardQuestion } from './Interfaces';
 
 interface ParsedMarkdownData {
   title: string;
@@ -24,6 +25,8 @@ export interface Answer {
 }
 
 export interface Question {
+  enableCodeFormatting?: boolean;
+  codeLanguage?: 'javascript' | 'html';
   id: string;
   title: string;
   question: string;
@@ -48,13 +51,6 @@ export interface MarkdownEditData {
   title: string;
   content: string;
   createdAt: string;
-}
-
-export interface DashboardQuestion extends Question {
-  onEdit?: () => void;
-  initialData?: Answer[];
-  onEditMarkdown: (markdown: MarkdownData) => void;
-  isExpanded?: boolean;
 }
 
 interface FileSystemState {
@@ -126,20 +122,25 @@ const Dashboard = () => {
       console.error('Directory picker is not supported in this environment');
       return;
     }
-
+  
     setIsLoading(true);
     try {
+      // Request access to a directory
       const handle = await window.showDirectoryPicker();
       setFileSystem({ handle, path: handle.name });
-
+  
       const loadedQuestions: DashboardQuestion[] = [];
+  
       for await (const entry of handle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-          if (entry instanceof FileSystemFileHandle) {
-            const file = await entry.getFile();
+          if ((entry as FileSystemFileHandle).getFile) {
+            const fileHandle = entry as FileSystemFileHandle;
+            const file = await fileHandle.getFile();
             const content = await file.text();
+  
             try {
               const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
+  
               if (parsedData) {
                 loadedQuestions.push({
                   ...parsedData,
@@ -149,6 +150,7 @@ const Dashboard = () => {
                   isExpanded: false,
                   title: parsedData.title || entry.name.replace('.md', ''),
                   onEditMarkdown: () => {},
+                  enableCodeFormatting: parsedData.enableCodeFormatting ?? true,
                 });
               }
             } catch (error) {
@@ -157,6 +159,8 @@ const Dashboard = () => {
           }
         }
       }
+  
+      // Update the state with the loaded questions
       setQuestions(loadedQuestions);
     } catch (error) {
       if ((error as Error).name === 'AbortError') return;
@@ -166,7 +170,7 @@ const Dashboard = () => {
       setIsLoading(false);
     }
   };
-
+  
   const saveQuestionToFile = async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
 
@@ -214,7 +218,8 @@ const Dashboard = () => {
       answers: [],
       difficulty: 1,
       tags: [],
-      type: 'markdown'
+      type: 'markdown',
+      enableCodeFormatting: false
     };
     setInitialData(markdownData);
     setShowEditor(true);
@@ -228,10 +233,10 @@ const Dashboard = () => {
   };
 
   const handleSaveQuestion = async (questionData: QuestionData) => {
-    if (!questionData.question.trim()) return;
+    if (!questionData.question.trim() || !fileSystem.handle) return;
   
-    const enableCodeFormatting = true; 
-    const defaultLanguage = 'javascript'; 
+    const enableCodeFormatting = true;
+    const defaultLanguage = "javascript";
   
     const newQuestionData: DashboardQuestion = {
       id: currentlyEditing || uuidv4(),
@@ -241,31 +246,55 @@ const Dashboard = () => {
       difficulty: questionData.difficulty,
       tags: questionData.tags,
       isExpanded: false,
-      onEditMarkdown: () => {},
-      type: 'question',
+      onEditMarkdown: () => { },
+      type: "question",
       markdownContent: generateMarkdown(
         questionData,
         enableCodeFormatting,
         defaultLanguage
       ),
+      enableCodeFormatting: false
     };
   
-    if (currentlyEditing) {
-      const updatedQuestions = questions.map((q) =>
-        q.id === currentlyEditing ? newQuestionData : q
+    try {
+      // Generate markdown content
+      const markdownContent = generateMarkdown(
+        newQuestionData,
+        enableCodeFormatting,
+        defaultLanguage
       );
-      setQuestions(updatedQuestions);
-    } else {
-      setQuestions([...questions, newQuestionData]);
+  
+      // Save to file system
+      const filename = `${questionData.title
+        .toLowerCase()
+        .replace(/\s+/g, "-")}.md`;
+      const fileHandle = await fileSystem.handle.getFileHandle(filename, {
+        create: true,
+      });
+      const writable = await fileHandle.createWritable();
+      await writable.write(markdownContent || "");
+      await writable.close();
+  
+      // Update state
+      if (currentlyEditing) {
+        setQuestions(
+          questions.map((q) =>
+            q.id === currentlyEditing ? newQuestionData : q
+          )
+        );
+      } else {
+        setQuestions([...questions, newQuestionData]);
+      }
+  
+      setShowEditor(false);
+      setInitialData(undefined);
+      setCurrentlyEditing(null);
+    } catch (error) {
+      console.error("Error saving question:", error);
+      alert("Failed to save question. Please try again.");
     }
-  
-    setShowEditor(false);
-    setInitialData(undefined);
-    setCurrentlyEditing(null);
   };
-  
-  
-
+   
   const handleEdit = (question: Question) => {
     setCurrentlyEditing(question.id);
     const questionData: Question = {
@@ -309,6 +338,7 @@ const Dashboard = () => {
                   onSaveMarkdown={handleSaveMarkdown}
                   initialData={initialData}
                   isEditing={currentlyEditing !== null || currentlyEditingMarkdown !== null}
+                  fileSystem={fileSystem}
                 />
               ) : (
                 <SavedQuestionsList
