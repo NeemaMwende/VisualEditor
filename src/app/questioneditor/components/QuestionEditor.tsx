@@ -315,10 +315,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const handleSave = async () => {
     if (!title.trim()) {
       alert("Please provide a title");
-      alert("Please provide a title");
       return;
     }
-  
   
     const savedData: Question = {
       id: initialData?.id || uuidv4(),
@@ -328,53 +326,17 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       tags,
       title,
       type: "question",
-      type: "question",
       markdownContent,
       codeLanguage: formattingOptions.defaultLanguage,
       enableCodeFormatting: formattingOptions.enableCodeFormatting,
-      enableCodeFormatting: formattingOptions.enableCodeFormatting,
     };
-  
   
     try {
       // Generate markdown content
       const generatedMarkdown = generateMarkdown(
-      const generatedMarkdown = generateMarkdown(
         savedData,
         formattingOptions.enableCodeFormatting,
         formattingOptions.defaultLanguage
-      );
-  
-      // Save to file system if handle exists
-      if (fileSystem?.handle) {
-        const filename = `${title.toLowerCase().replace(/\s+/g, "-")}.md`;
-  
-        // If editing and title changed, remove old file
-        if (isEditing && initialData?.title !== title) {
-          const oldFilename = `${initialData?.title
-            .toLowerCase()
-            .replace(/\s+/g, "-")}.md`;
-          try {
-            await fileSystem.handle.removeEntry(oldFilename);
-          } catch (error) {
-            if ((error as Error).name !== "NotFoundError") {
-              console.error("Error removing old file:", error);
-            }
-          }
-        }
-  
-        // Save new file
-        const fileHandle = await fileSystem.handle.getFileHandle(filename, {
-          create: true,
-        });
-        const writable = await fileHandle.createWritable();
-        await writable.write(generatedMarkdown || ""); // Default to empty string
-        await writable.close();
-      }
-  
-      // Save to local storage
-      const existingQuestions = JSON.parse(
-        localStorage.getItem("questions") || "[]"
       );
   
       // Save to file system if handle exists
@@ -414,7 +376,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           )
         : [...existingQuestions, savedData];
       localStorage.setItem("questions", JSON.stringify(updatedQuestions));
-  
   
       onSave(savedData);
       alert("Saved successfully!");
