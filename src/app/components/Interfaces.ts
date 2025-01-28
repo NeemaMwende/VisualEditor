@@ -36,12 +36,26 @@ export interface QuestionData extends BaseQuestion {
 export interface DashboardQuestion extends BaseQuestion {
   onEdit?: () => void;
   initialData?: Answer[];
-  onEditMarkdown: (markdown: MarkdownData) => void;
   type?: 'question' | 'markdown';
   enableCodeFormatting?: boolean;
   codeLanguage?: 'javascript' | 'html';
   id: string;
 }
+
+export interface DashboardQuestion {
+  id: string;
+  title: string;
+  question: string;
+  answers: Answer[];
+  difficulty: number;
+  tags: string[];
+  isExpanded?: boolean;
+  onEditMarkdown?: (markdown: MarkdownData) => void;
+  codeLanguage?: 'javascript' | 'html';
+  markdownContent?: string;
+  enableCodeFormatting?: boolean; // Optional
+}
+
 
 export interface EditorQuestion extends BaseQuestion {
   initialData?: Answer[];

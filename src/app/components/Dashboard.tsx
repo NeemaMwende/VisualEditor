@@ -6,6 +6,7 @@ import { Folder, Plus } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { QuestionSkeleton, QuestionEditorSkeleton } from '../Skeleton';
 import dynamic from 'next/dynamic';
+import { DashboardQuestion } from './Interfaces';
 
 interface ParsedMarkdownData {
   title: string;
@@ -24,6 +25,8 @@ export interface Answer {
 }
 
 export interface Question {
+  enableCodeFormatting: boolean;
+  codeLanguage?: 'javascript' | 'html';
   id: string;
   title: string;
   question: string;
@@ -48,13 +51,6 @@ export interface MarkdownEditData {
   title: string;
   content: string;
   createdAt: string;
-}
-
-export interface DashboardQuestion extends Question {
-  onEdit?: () => void;
-  initialData?: Answer[];
-  onEditMarkdown: (markdown: MarkdownData) => void;
-  isExpanded?: boolean;
 }
 
 interface FileSystemState {
@@ -126,21 +122,30 @@ const Dashboard = () => {
       console.error('Directory picker is not supported in this environment');
       return;
     }
-
+  
     setIsLoading(true);
     try {
+      // Request access to a directory
       const handle = await window.showDirectoryPicker();
       setFileSystem({ handle, path: handle.name });
-
+  
       const loadedQuestions: DashboardQuestion[] = [];
+  
+      // Iterate over the directory entries
       for await (const entry of handle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-          if (entry instanceof FileSystemFileHandle) {
-            const file = await entry.getFile();
+          // Type check to ensure it's a FileSystemFileHandle
+          if ((entry as FileSystemFileHandle).getFile) {
+            const fileHandle = entry as FileSystemFileHandle;
+            const file = await fileHandle.getFile();
             const content = await file.text();
+  
             try {
+              // Parse markdown content
               const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
+  
               if (parsedData) {
+                // Push the question with properly assigned default values
                 loadedQuestions.push({
                   ...parsedData,
                   id: entry.name.replace('.md', ''),
@@ -149,6 +154,7 @@ const Dashboard = () => {
                   isExpanded: false,
                   title: parsedData.title || entry.name.replace('.md', ''),
                   onEditMarkdown: () => {},
+                  enableCodeFormatting: parsedData.enableCodeFormatting ?? true, // Default to true if undefined
                 });
               }
             } catch (error) {
@@ -157,6 +163,8 @@ const Dashboard = () => {
           }
         }
       }
+  
+      // Update the state with the loaded questions
       setQuestions(loadedQuestions);
     } catch (error) {
       if ((error as Error).name === 'AbortError') return;
@@ -166,7 +174,7 @@ const Dashboard = () => {
       setIsLoading(false);
     }
   };
-
+  
   const saveQuestionToFile = async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
 
@@ -214,7 +222,8 @@ const Dashboard = () => {
       answers: [],
       difficulty: 1,
       tags: [],
-      type: 'markdown'
+      type: 'markdown',
+      enableCodeFormatting: false
     };
     setInitialData(markdownData);
     setShowEditor(true);
@@ -239,15 +248,16 @@ const Dashboard = () => {
       question: questionData.question,
       answers: questionData.answers,
       difficulty: questionData.difficulty,
-      tags: questionData.tags, 
+      tags: questionData.tags,
       isExpanded: false,
-      onEditMarkdown: () => {},
+      onEditMarkdown: () => { },
       type: "question",
       markdownContent: generateMarkdown(
         questionData,
         enableCodeFormatting,
         defaultLanguage
       ),
+      enableCodeFormatting: false
     };
   
     try {
