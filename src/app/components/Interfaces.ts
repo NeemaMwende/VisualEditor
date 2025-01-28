@@ -53,7 +53,7 @@ export interface DashboardQuestion {
   onEditMarkdown?: (markdown: MarkdownData) => void;
   codeLanguage?: 'javascript' | 'html';
   markdownContent?: string;
-  enableCodeFormatting?: boolean; // Optional
+  enableCodeFormatting?: boolean; 
 }
 
 

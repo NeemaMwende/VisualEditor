@@ -25,7 +25,7 @@ export interface Answer {
 }
 
 export interface Question {
-  enableCodeFormatting: boolean;
+  enableCodeFormatting?: boolean;
   codeLanguage?: 'javascript' | 'html';
   id: string;
   title: string;
