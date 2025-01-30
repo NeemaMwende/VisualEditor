@@ -25,23 +25,134 @@ export interface FormattingOptions {
   enableCodeFormatting: boolean;
   defaultLanguage: 'javascript' | 'html';
 }
-export const synchronizeMarkdownFormatting = (
-  text: string,
-  enableFormatting: boolean,
-  language: 'javascript' | 'html'
-): string => {
-  if (!enableFormatting) {
-    return cleanupCodeBlocks(text, language);
+const isCodeBlock = (text: string): boolean => {
+  const patterns = [
+    // HTML-specific patterns 
+    /<[a-zA-Z][\s\S]*?>/,  
+    /<\/[a-zA-Z]+>/,        
+    /<!DOCTYPE\s+html>/i,   
+    /^<(html|head|body|div|span|p|a|button|input|form|label)\b/i,
+    
+    // JavaScript patterns
+    /function\s+\w+\s*\([^)]*\)\s*{/,
+    /const\s+\w+\s*=\s*\([^)]*\)\s*=>/,
+    /class\s+\w+(\s+extends\s+\w+)?\s*{/,
+    /(const|let|var)\s+\w+\s*=\s*(\{|\[|new\s+|require\(|import)/,
+    /(if|for|while|switch)\s*\([^)]*\)\s*{/,
+    /\w+\.(map|filter|reduce|forEach|then|catch)\(/,
+    /(import|export)\s+(?:{[^}]+}|\w+|\*)\s+from/,
+    /\(\s*\)\s*=>\s*{/,
+    /async\s+function/,
+    /await\s+\w+/,
+    /try\s*{\s*.*}\s*catch/,
+    /return\s+[\w\{\[\(]/,
+    /throw\s+new\s+\w+/,
+    /console\.(log|error|warn|info)/
+  ];
+
+  return patterns.some(pattern => pattern.test(text.trim()));
+};
+
+const findCodeBlocks = (text: string): { 
+  start: number; 
+  end: number; 
+  content: string;
+  language?: 'javascript' | 'html' 
+}[] => {
+  const lines = text.split('\n');
+  const blocks: { start: number; end: number; content: string; language?: 'javascript' | 'html' }[] = [];
+  let currentBlock: string[] = [];
+  let blockStart = -1;
+  let inExistingCodeBlock = false;
+  let existingBlockLanguage: string | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Handle existing markdown code blocks
+    if (line.startsWith('```')) {
+      if (!inExistingCodeBlock) {
+        inExistingCodeBlock = true;
+        blockStart = i;
+        // Extract language if specified
+        const match = line.match(/^```(\w+)/);
+        existingBlockLanguage = match ? match[1] : null;
+      } else {
+        if (blockStart !== -1) {
+          const content = lines.slice(blockStart + 1, i).join('\n');
+          blocks.push({
+            start: blockStart,
+            end: i,
+            content,
+            language: (existingBlockLanguage as 'javascript' | 'html') || detectCodeLanguage(content) || 'javascript'
+          });
+        }
+        inExistingCodeBlock = false;
+        blockStart = -1;
+        existingBlockLanguage = null;
+      }
+      continue;
+    }
+
+    if (inExistingCodeBlock) continue;
+
+    // Auto-detect code blocks
+    if (isCodeBlock(line)) {
+      if (currentBlock.length === 0) {
+        blockStart = i;
+      }
+      currentBlock.push(lines[i]);
+    } else if (currentBlock.length > 0) {
+      // Check if the line might be part of the code block
+      if (line.match(/[{}\[\]();,>]$/) || line.trim() === '') {
+        currentBlock.push(lines[i]);
+      } else {
+        const content = currentBlock.join('\n');
+        const language = detectCodeLanguage(content) || 'javascript';
+        blocks.push({
+          start: blockStart,
+          end: i - 1,
+          content,
+          language
+        });
+        currentBlock = [];
+        blockStart = -1;
+      }
+    }
   }
 
-  // Preserve existing language tags if present, otherwise use the specified language
-  const cleaned = cleanupCodeBlocks(text, language);
-  return cleaned.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, lang, code) => {
-    // Keep the original language tag if it exists, otherwise use the specified language
-    const codeLanguage = lang || language;
-    return `\n\`\`\`${codeLanguage}\n${code.trim()}\n\`\`\``;
-  });
+  // Handle last auto-detected block
+  if (currentBlock.length > 0) {
+    const content = currentBlock.join('\n');
+    const language = detectCodeLanguage(content) || 'javascript';
+    blocks.push({
+      start: blockStart,
+      end: lines.length - 1,
+      content,
+      language
+    });
+  }
+
+  return blocks;
 };
+
+ 
+  export const synchronizeMarkdownFormatting = (
+    text: string,
+    enableFormatting: boolean,
+    language: 'javascript' | 'html'
+  ): string => {
+    if (!text) return '';
+    if (!enableFormatting) return cleanupCodeBlocks(text, language);
+  
+    // Preserve existing language tags if present, otherwise use the specified language
+    const cleaned = cleanupCodeBlocks(text, language);
+    return cleaned.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, lang, code) => {
+      // Keep the original language tag if it exists, otherwise use the specified language
+      const codeLanguage = lang || language;
+      return `\n\`\`\`${codeLanguage}\n${code.trim()}\n\`\`\``;
+    });
+  };
 
 export const detectCodeLanguage = (code: string): 'javascript' | 'html' | null => {
   const jsPatterns = [
@@ -57,17 +168,19 @@ export const detectCodeLanguage = (code: string): 'javascript' | 'html' | null =
   ];
 
   const htmlPatterns = [
-    /^<[a-zA-Z][^>]*>/,
-    /^<\/[a-zA-Z][^>]*>/,
-    /^<[^>]+\/>/,
-    /^<(div|span|p|a|button|input|form|label|!DOCTYPE)/i
+    /^<(?:!DOCTYPE\s+html|[a-zA-Z][\s\S]*?)>/i,
+    /^<!DOCTYPE\s+html>/i,
+    /^<html\b/i,
+    /^<(div|span|p|a|button|input|form|label|head|body)\b/i,
+    /^<\/[a-zA-Z]+>/,
+    /^<[^>]+\/>/
   ];
 
   const jsMatches = jsPatterns.filter(pattern => pattern.test(code.trim())).length;
   const htmlMatches = htmlPatterns.filter(pattern => pattern.test(code.trim())).length;
 
-  if (jsMatches > 0 && jsMatches >= htmlMatches) return 'javascript';
-  if (htmlMatches > 0) return 'html';
+  if (htmlMatches > 0 && htmlMatches >= jsMatches) return 'html';
+  if (jsMatches > 0 && jsMatches > htmlMatches) return 'javascript';
   return null;
 };
 
@@ -89,32 +202,7 @@ export const updateMarkdownCodeBlocks = (
   });
 };
 
-export const formatCode = (code: string, language: 'javascript' | 'html'): string => {
-  if (!code.trim()) return code;
-  const lines = code.split('\n').filter(line => line.trim());
-  if (language === 'javascript') {
-    return lines.map(line => {
-      line = line.replace(/([;{}])\s*([^;{}])/g, '$1\n$2');
-      line = line.replace(/([^\s{])\s*({)/g, '$1\n$2');
-      return line;
-    }).join('\n');
-  }
-  
-  if (language === 'html') {
-    let indentLevel = 0;
-    return lines.map(line => {
-      const isClosingTag = line.trim().startsWith('</');
-      if (isClosingTag) indentLevel = Math.max(0, indentLevel - 1);
-      const formatted = '  '.repeat(indentLevel) + line.trim();
-      if (!isClosingTag && line.includes('>') && !line.includes('/>')) indentLevel++;
-      return formatted;
-    }).join('\n');
-  }
-  
-  return code;
-};
-
-export const processMarkdownBlock = (
+const processMarkdownBlock = (
   text: string,
   defaultLanguage: 'javascript' | 'html',
   enableFormatting: boolean
@@ -122,49 +210,44 @@ export const processMarkdownBlock = (
   if (!enableFormatting) return text;
 
   const lines = text.split('\n');
-  let formattedText = '';
-  let codeBlockLines: string[] = [];
+  let result = '';
   let isInCodeBlock = false;
-  let currentLanguage = defaultLanguage;
+  let skipUntil = -1;
 
+  const codeBlocks = findCodeBlocks(text);
+  
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const trimmedLine = line.trim();
+    
+    if (i <= skipUntil) continue;
 
-    if (trimmedLine.startsWith('```')) {
-      if (!isInCodeBlock) {
-        isInCodeBlock = true;
-        codeBlockLines = [];
-        // Extract language if specified
-        const langMatch = trimmedLine.match(/^```(\w+)/);
-        if (langMatch && (langMatch[1] === 'javascript' || langMatch[1] === 'html')) {
-          currentLanguage = langMatch[1] as 'javascript' | 'html';
-        } else {
-          currentLanguage = defaultLanguage;
-        }
-      } else {
-        isInCodeBlock = false;
-        if (codeBlockLines.length > 0) {
-          formattedText += `\n\`\`\`${currentLanguage}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
-          codeBlockLines = [];
-          currentLanguage = defaultLanguage;
-        }
-      }
+    // Handle existing code block markers
+    if (line.trim().startsWith('```')) {
+      isInCodeBlock = !isInCodeBlock;
+      result += line + '\n';
       continue;
     }
 
     if (isInCodeBlock) {
-      codeBlockLines.push(line);
+      result += line + '\n';
+      continue;
+    }
+
+    const codeBlock = codeBlocks.find(block => block.start === i);
+    if (codeBlock) {
+      // Don't wrap already wrapped code blocks
+      if (!lines[codeBlock.start].trim().startsWith('```')) {
+        result += `\n\`\`\`${codeBlock.language}\n${codeBlock.content}\n\`\`\`\n`;
+      } else {
+        result += lines.slice(codeBlock.start, codeBlock.end + 1).join('\n') + '\n';
+      }
+      skipUntil = codeBlock.end;
     } else {
-      formattedText += line + '\n';
+      result += line + '\n';
     }
   }
 
-  if (isInCodeBlock && codeBlockLines.length > 0) {
-    formattedText += `\n\`\`\`${currentLanguage}\n${codeBlockLines.join('\n')}\n\`\`\`\n`;
-  }
-
-  return formattedText.trim();
+  return result.trim();
 };
 
 export const generateMarkdown = (
@@ -177,7 +260,7 @@ export const generateMarkdown = (
   try {
     const tagString = Array.isArray(question.tags) ? question.tags.join(' ') : '';
     let md = '---\n';
-    md += `title: ${question.title || ''}\n`;
+    //md += `title: ${question.title || ''}\n`;
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
@@ -204,35 +287,44 @@ export const generateMarkdown = (
     return '';
   }
 };
-
 const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): string => {
   if (!text) return '';
 
   let normalized = text.replace(/\r\n/g, '\n');
   normalized = normalized.replace(/```[^\n]*\n\s*```/g, '');
-  const codeBlockRegex = /```(?:javascript|html)?\n([\s\S]*?)\n```/g;
-  const codeBlocks: string[] = [];
-  let match;
-
-  while ((match = codeBlockRegex.exec(normalized)) !== null) {
-    if (match[1].trim()) {
-      codeBlocks.push(match[1].trim());
+  
+  // First, preserve existing code blocks
+  const existingBlocks: string[] = [];
+  normalized = normalized.replace(/```(?:javascript|html)?\n([\s\S]*?)\n```/g, (match, code) => {
+    if (code.trim()) {
+      existingBlocks.push(code.trim());
+      return '\n[CODE_BLOCK_PLACEHOLDER]\n';
     }
+    return '';
+  });
+
+  // Then detect and format new code blocks
+  const detectedBlocks = findCodeBlocks(normalized);
+  let result = normalized;
+
+  // Replace detected blocks from bottom to top to maintain indices
+  for (let i = detectedBlocks.length - 1; i >= 0; i--) {
+    const block = detectedBlocks[i];
+    const before = result.slice(0, block.start);
+    const after = result.slice(block.end + 1);
+    result = before + `\n[CODE_BLOCK_PLACEHOLDER]\n` + after;
+    existingBlocks.unshift(block.content);
   }
 
-  // combine code blocks into a single block
-  if (codeBlocks.length > 0) {
-    normalized = normalized.replace(/```(?:javascript|html)?\n[\s\S]*?\n```/g, '').trim();
-    
-    const combinedCode = codeBlocks.join('\n\n');
-    normalized = `${normalized}\n\n\`\`\`${language}\n${combinedCode}\n\`\`\``;
-  }
+  // Restore all code blocks with proper formatting
+  result = result.replace(/\[CODE_BLOCK_PLACEHOLDER\]/g, () => {
+    const code = existingBlocks.shift() || '';
+    const detectedLang = detectCodeLanguage(code) || language;
+    return `\`\`\`${detectedLang}\n${code}\n\`\`\``;
+  });
 
-  normalized = normalized.replace(/\n{3,}/g, '\n\n');
-
-  return normalized.trim();
+  return result.trim();
 };
-
 export const parseMarkdownContent = (
   content: string,
   formattingOptions: FormattingOptions = {
