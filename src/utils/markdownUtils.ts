@@ -202,38 +202,6 @@ export const updateMarkdownCodeBlocks = (
   });
 };
 
-// const formatCode = (code: string, language: 'javascript' | 'html'): string => {
-//   if (!code.trim()) return code;
-//   const lines = code.split('\n').filter(line => line.trim());
-  
-//   if (language === 'javascript') {
-//     return lines.map(line => {
-//       line = line.replace(/([;}])\s*([^;}])/g, '$1\n$2');
-//       line = line.replace(/([^\s])\s*({)/g, '$1\n$2');
-//       return line;
-//     }).join('\n');
-//   }
-  
-//   if (language === 'html') {
-//     let indentLevel = 0;
-//     return lines.map(line => {
-//       const trimmedLine = line.trim();
-//       const isClosingTag = trimmedLine.startsWith('</');
-//       const isSelfClosingTag = trimmedLine.endsWith('/>');
-      
-//       if (isClosingTag) indentLevel = Math.max(0, indentLevel - 1);
-      
-//       const formatted = '  '.repeat(indentLevel) + trimmedLine;
-      
-//       if (!isClosingTag && !isSelfClosingTag && line.includes('>')) indentLevel++;
-      
-//       return formatted;
-//     }).join('\n');
-//   }
-  
-//   return code;
-// };
-
 const processMarkdownBlock = (
   text: string,
   defaultLanguage: 'javascript' | 'html',
