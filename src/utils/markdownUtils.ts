@@ -136,22 +136,25 @@ const findCodeBlocks = (text: string): {
   return blocks;
 };
 
-export const synchronizeMarkdownFormatting = (
-  text: string,
-  enableFormatting: boolean,
-  language: 'javascript' | 'html'
-): string => {
-  if (!text) return '';
-  if (!enableFormatting) return cleanupCodeBlocks(text, language);
+ 
+  export const synchronizeMarkdownFormatting = (
+    text: string,
+    enableFormatting: boolean,
+    language: 'javascript' | 'html'
+  ): string => {
+    if (!text) return '';
+    if (!enableFormatting) return cleanupCodeBlocks(text, language);
+  
+    // Preserve existing language tags if present, otherwise use the specified language
+    const cleaned = cleanupCodeBlocks(text, language);
+    return cleaned.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, lang, code) => {
+      // Keep the original language tag if it exists, otherwise use the specified language
+      const codeLanguage = lang || language;
+      return `\n\`\`\`${codeLanguage}\n${code.trim()}\n\`\`\``;
+    });
+  };
 
-  const processed = processMarkdownBlock(text, language, enableFormatting);
-  return processed.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, lang, code) => {
-    const codeLanguage = lang || language;
-    return `\n\`\`\`${codeLanguage}\n${formatCode(code.trim(), codeLanguage as 'javascript' | 'html')}\n\`\`\`\n`;
-  });
-};
-
-const detectCodeLanguage = (code: string): 'javascript' | 'html' | null => {
+export const detectCodeLanguage = (code: string): 'javascript' | 'html' | null => {
   const jsPatterns = [
     /^(const|let|var|function)\s+\w+/,
     /^(export\s+)?(class)\s+\w+/,

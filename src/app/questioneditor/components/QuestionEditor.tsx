@@ -194,8 +194,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       setIsMarkdownSyncing(false);
     }
   };
-
-  const handleFormatToggle = (enableFormatting: boolean) => {
+  
+const handleFormatToggle = (enableFormatting: boolean) => {
     setFormattingOptions(prev => ({
       ...prev,
       enableCodeFormatting: enableFormatting,
@@ -307,32 +307,32 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       }));
     }
   };
-
   const handleLanguageChange = (newLanguage: 'javascript' | 'html') => {
     setFormattingOptions(prev => ({
       ...prev,
       defaultLanguage: newLanguage
     }));
-
+  
     if (formattingOptions.enableCodeFormatting) {
-      const updatedQuestion = synchronizeMarkdownFormatting(
-        question,
-        true,
-        newLanguage
-      );
+    
+      const updateCodeBlockLanguage = (content: string) => {
+        return content.replace(
+          /```(javascript|html)?\n([\s\S]*?)\n```/g, 
+          (_, oldLang, code) => `\`\`\`${newLanguage}\n${code}\n\`\`\``
+        );
+      };
+  
+      // Update question with new language
+      const updatedQuestion = updateCodeBlockLanguage(question);
       
       const updatedAnswers = answers.map(answer => ({
         ...answer,
-        text: synchronizeMarkdownFormatting(
-          answer.text,
-          true,
-          newLanguage
-        )
+        text: updateCodeBlockLanguage(answer.text)
       }));
-
+  
       setQuestion(updatedQuestion);
       setAnswers(updatedAnswers);
-
+  
       const updatedMarkdown = generateMarkdown(
         {
           id: initialData?.id || uuidv4(),
@@ -347,7 +347,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         true,
         newLanguage
       );
-
+  
       setMarkdownContent(updatedMarkdown);
       lastSyncedMarkdownRef.current = updatedMarkdown;
     }
