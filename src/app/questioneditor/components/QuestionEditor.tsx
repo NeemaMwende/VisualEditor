@@ -72,7 +72,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const answerRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const lastSyncedMarkdownRef = useRef<string>('');
-
+  const [rawContent, setRawContent] = useState({
+    question: '',
+    answers: [] as Answer[]
+  });
+  
   // Initialize answer order
   useEffect(() => {
     if (answers.length > 0 && answerOrder.length === 0) {
@@ -95,6 +99,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       setDifficulty(initialData.difficulty || 1);
       setTitle(initialData.title || '');
       setTags(initialData.tags || []);
+      
+      // Store raw content
+      setRawContent({
+        question: initialData.question || '',
+        answers: initialAnswers
+      });
       
       // Set initial markdown content
       const initialMarkdown = (initialData as Question).markdownContent || generateMarkdown(
@@ -188,32 +198,51 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const handleFormatToggle = (enableFormatting: boolean) => {
     setFormattingOptions(prev => ({
       ...prev,
-      enableCodeFormatting: enableFormatting
+      enableCodeFormatting: enableFormatting,
     }));
 
-    const updatedQuestion = synchronizeMarkdownFormatting(
-      question,
-      enableFormatting,
-      formattingOptions.defaultLanguage
-    );
-    
-    const updatedAnswers = answers.map(answer => ({
-      ...answer,
-      text: synchronizeMarkdownFormatting(
-        answer.text,
-        enableFormatting,
+    if (!enableFormatting) {
+      setRawContent({
+        question: question,
+        answers: [...answers]
+      });
+      
+      // Remove code blocks when disabling formatting
+      const cleanQuestion = question.replace(/```(?:javascript|html)?\n([\s\S]*?)\n```/g, '$1').trim();
+      const cleanAnswers = answers.map(answer => ({
+        ...answer,
+        text: answer.text.replace(/```(?:javascript|html)?\n([\s\S]*?)\n```/g, '$1').trim()
+      }));
+
+      setQuestion(cleanQuestion);
+      setAnswers(cleanAnswers);
+    } else {
+      // If we're turning formatting on, use the stored raw content
+      const formattedQuestion = synchronizeMarkdownFormatting(
+        rawContent.question || question,
+        true,
         formattingOptions.defaultLanguage
-      )
-    }));
+      );
 
-    setQuestion(updatedQuestion);
-    setAnswers(updatedAnswers);
+      const formattedAnswers = (rawContent.answers.length ? rawContent.answers : answers).map(answer => ({
+        ...answer,
+        text: synchronizeMarkdownFormatting(
+          answer.text,
+          true,
+          formattingOptions.defaultLanguage
+        )
+      }));
 
+      setQuestion(formattedQuestion);
+      setAnswers(formattedAnswers);
+    }
+
+    // Update markdown content
     const updatedMarkdown = generateMarkdown(
       {
         id: initialData?.id || uuidv4(),
-        question: updatedQuestion,
-        answers: updatedAnswers,
+        question: enableFormatting ? rawContent.question : question,
+        answers: enableFormatting ? rawContent.answers : answers,
         difficulty,
         tags,
         title,
@@ -227,7 +256,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     setMarkdownContent(updatedMarkdown);
     lastSyncedMarkdownRef.current = updatedMarkdown;
   };
-
+  
   const handleFormatText = (formattedText: string, language: 'javascript' | 'html') => {
     const activeElement = document.activeElement as HTMLTextAreaElement;
     const selectionStart = activeElement?.selectionStart || 0;
@@ -253,6 +282,29 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         };
         setAnswers(updatedAnswers);
       }
+    }
+  };
+
+  const handleQuestionChange = (newQuestion: string) => {
+    setQuestion(newQuestion);
+    if (!formattingOptions.enableCodeFormatting) {
+      setRawContent(prev => ({
+        ...prev,
+        question: newQuestion
+      }));
+    }
+  };
+
+  const handleAnswerChange = (index: number, newText: string) => {
+    const newAnswers = [...answers];
+    newAnswers[index] = { ...answers[index], text: newText };
+    setAnswers(newAnswers);
+    
+    if (!formattingOptions.enableCodeFormatting) {
+      setRawContent(prev => ({
+        ...prev,
+        answers: newAnswers
+      }));
     }
   };
 
@@ -526,7 +578,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               <textarea
                 value={question}
                 ref={questionRef}
-                onChange={(e) => setQuestion(e.target.value)}
+                onChange={(e) => handleQuestionChange(e.target.value)}
                 className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
                 placeholder="Enter your question here"
@@ -575,11 +627,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         answerRefs.current[index] = el;
                       }}
                       value={answer.text}
-                      onChange={(e) => {
-                        const newAnswers = [...answers];
-                        newAnswers[index] = { ...answer, text: e.target.value };
-                        setAnswers(newAnswers);
-                      }}
+                      // onChange={(e) => {
+                      //   const newAnswers = [...answers];
+                      //   newAnswers[index] = { ...answer, text: e.target.value };
+                      //   setAnswers(newAnswers);
+                      // }}
+                      onChange={(e) => handleAnswerChange(index, e.target.value)}
                       className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={2}
                       placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}

@@ -34,14 +34,15 @@ export const synchronizeMarkdownFormatting = (
     return cleanupCodeBlocks(text, language);
   }
 
-  // Preserve existing language tags if present, otherwise use the specified language
   const cleaned = cleanupCodeBlocks(text, language);
+
   return cleaned.replace(/```(\w+)?\n([\s\S]*?)\n```/g, (match, lang, code) => {
-    // Keep the original language tag if it exists, otherwise use the specified language
     const codeLanguage = lang || language;
-    return `\n\`\`\`${codeLanguage}\n${code.trim()}\n\`\`\``;
+    return `\n\`\`\`${codeLanguage}\n${code.trim()}\n\`\`\`\n`;
   });
 };
+
+
 
 export const detectCodeLanguage = (code: string): 'javascript' | 'html' | null => {
   const jsPatterns = [
