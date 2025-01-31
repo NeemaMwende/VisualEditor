@@ -260,7 +260,6 @@ export const generateMarkdown = (
   try {
     const tagString = Array.isArray(question.tags) ? question.tags.join(' ') : '';
     let md = '---\n';
-    //md += `title: ${question.title || ''}\n`;
     md += `difficulty: ${question.difficulty || 1}\n`;
     md += `tags: ${tagString}\n`;
     md += '---\n\n';
@@ -274,7 +273,7 @@ export const generateMarkdown = (
     if (Array.isArray(question.answers)) {
       question.answers.forEach((answer) => {
         if (answer && typeof answer === 'object') {
-          md += `# ${answer.isCorrect ? 'Correct' : ''}\n`;
+          md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
           const processedAnswer = processMarkdownBlock(answer.text.trim(), defaultLanguage, enableFormatting);
           md += processedAnswer + '\n\n';
         }
@@ -291,14 +290,14 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
   if (!text) return '';
 
   let normalized = text.replace(/\r\n/g, '\n');
-  normalized = normalized.replace(/```[^\n]*\n\s*```/g, '');
+  normalized = normalized.replace(/(\n\s*\n)/g, '\n');
   
   // First, preserve existing code blocks
   const existingBlocks: string[] = [];
   normalized = normalized.replace(/```(?:javascript|html)?\n([\s\S]*?)\n```/g, (match, code) => {
     if (code.trim()) {
       existingBlocks.push(code.trim());
-      return '\n[CODE_BLOCK_PLACEHOLDER]\n';
+      return '[CODE_BLOCK_PLACEHOLDER]';
     }
     return '';
   });
@@ -312,7 +311,7 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
     const block = detectedBlocks[i];
     const before = result.slice(0, block.start);
     const after = result.slice(block.end + 1);
-    result = before + `\n[CODE_BLOCK_PLACEHOLDER]\n` + after;
+    result = before + `[CODE_BLOCK_PLACEHOLDER]` + after;
     existingBlocks.unshift(block.content);
   }
 
@@ -320,7 +319,8 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
   result = result.replace(/\[CODE_BLOCK_PLACEHOLDER\]/g, () => {
     const code = existingBlocks.shift() || '';
     const detectedLang = detectCodeLanguage(code) || language;
-    return `\`\`\`${detectedLang}\n${code}\n\`\`\``;
+    return `\`\`\`${detectedLang}\n${code.trim()}\n\`\`\``;
+
   });
 
   return result.trim();
