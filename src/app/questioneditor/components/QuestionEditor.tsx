@@ -314,17 +314,17 @@ const handleFormatToggle = (enableFormatting: boolean) => {
     }));
   
     if (formattingOptions.enableCodeFormatting) {
-    
       const updateCodeBlockLanguage = (content: string) => {
         return content.replace(
-          /```(javascript|html)?\n([\s\S]*?)\n```/g, 
-          (_, oldLang, code) => `\`\`\`${newLanguage}\n${code}\n\`\`\``
+          /```(?:javascript|html|)([^\n]*)\n([\s\S]*?)\n```/g,
+          (match, _, code) => {
+            const trimmedCode = code.trim();
+            return `\`\`\`${newLanguage}\n${trimmedCode}\n\`\`\``;
+          }
         );
       };
   
-      // Update question with new language
       const updatedQuestion = updateCodeBlockLanguage(question);
-      
       const updatedAnswers = answers.map(answer => ({
         ...answer,
         text: updateCodeBlockLanguage(answer.text)
