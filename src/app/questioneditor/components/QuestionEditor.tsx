@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
 import TextSelectionFormatter from '@/app/components/TextSelectionFormatter';
+import MarkdownPreview from './MarkdownPreview';
 
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
@@ -497,17 +498,24 @@ const handleFormatToggle = (enableFormatting: boolean) => {
         <FormattingControls />
         
         {showMarkdown ? (
+          // <div className="space-y-4">
+          //   <label className="block text-gray-700 text-sm font-bold">
+          //     Markdown Content
+          //   </label>
+          //   <textarea
+          //     value={markdownContent}
+          //     onChange={(e) => handleMarkdownUpdate(e.target.value)}
+          //     className="w-full p-4 bg-gray-50 rounded-md font-mono text-sm"
+          //     rows={20}
+          //   />
+          // </div>
           <div className="space-y-4">
-            <label className="block text-gray-700 text-sm font-bold">
-              Markdown Content
-            </label>
-            <textarea
-              value={markdownContent}
-              onChange={(e) => handleMarkdownUpdate(e.target.value)}
-              className="w-full p-4 bg-gray-50 rounded-md font-mono text-sm"
-              rows={20}
-            />
-          </div>
+          <MarkdownPreview
+            markdown={markdownContent}
+            onMarkdownChange={handleMarkdownUpdate}
+            isFullScreen={false}
+          />
+        </div>
         ) : (
           <div className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
