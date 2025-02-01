@@ -116,56 +116,88 @@ const Dashboard = () => {
   const [currentlyEditingMarkdown, setCurrentlyEditingMarkdown] = useState<string | null>(null);
   const [fileSystem, setFileSystem] = useState<FileSystemState>({ handle: null, path: '' });
   const [isLoading, setIsLoading] = useState(false);
+  
+  const verifyPermission = async (handle: FileSystemDirectoryHandle): Promise<boolean> => {
+    const options = { mode: 'readwrite' } as const;
+  
+    // Check if queryPermission exists and if permission is granted
+    if (handle.queryPermission && (await handle.queryPermission(options)) === 'granted') {
+      return true;
+    }
+  
+    // Check if requestPermission exists and request permission if not granted
+    if (handle.requestPermission && (await handle.requestPermission(options)) === 'granted') {
+      return true;
+    }
+  
+    return false;
+  };
+
+  const handleFileSystemError = async (error: Error) => {
+    console.error('File system error:', error);
+    
+    if (error.name === 'InvalidStateError') {
+      setFileSystem({ handle: null, path: '' });
+      
+      // Notify user and prompt to reload directory
+      if (window.confirm('File system access has expired. Would you like to reload the directory?')) {
+        await loadDirectory();
+      }
+    } else {
+      alert(`File system error: ${error.message}`);
+    }
+  };
 
   const loadDirectory = async () => {
     if (!window.showDirectoryPicker) {
       console.error('Directory picker is not supported in this environment');
       return;
     }
-  
+
     setIsLoading(true);
     try {
       // Request access to a directory
       const handle = await window.showDirectoryPicker();
+      
+      // Verify we have permission
+      const hasPermission = await verifyPermission(handle);
+      if (!hasPermission) {
+        throw new Error('Permission denied');
+      }
+
       setFileSystem({ handle, path: handle.name });
-  
       const loadedQuestions: DashboardQuestion[] = [];
-  
+
       for await (const entry of handle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-          if ((entry as FileSystemFileHandle).getFile) {
+          try {
             const fileHandle = entry as FileSystemFileHandle;
             const file = await fileHandle.getFile();
             const content = await file.text();
-  
-            try {
-              const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
-  
-              if (parsedData) {
-                loadedQuestions.push({
-                  ...parsedData,
-                  id: entry.name.replace('.md', ''),
-                  markdownContent: content,
-                  type: 'question',
-                  isExpanded: false,
-                  title: parsedData.title || entry.name.replace('.md', ''),
-                  onEditMarkdown: () => {},
-                  enableCodeFormatting: parsedData.enableCodeFormatting ?? true,
-                });
-              }
-            } catch (error) {
-              console.error(`Error parsing ${entry.name}:`, error);
+
+            const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
+            if (parsedData) {
+              loadedQuestions.push({
+                ...parsedData,
+                id: entry.name.replace('.md', ''),
+                markdownContent: content,
+                type: 'question',
+                isExpanded: false,
+                title: parsedData.title || entry.name.replace('.md', ''),
+                onEditMarkdown: () => {},
+                enableCodeFormatting: parsedData.enableCodeFormatting ?? true,
+              });
             }
+          } catch (error) {
+            console.error(`Error parsing ${entry.name}:`, error);
           }
         }
       }
-  
-      // Update the state with the loaded questions
+
       setQuestions(loadedQuestions);
     } catch (error) {
       if ((error as Error).name === 'AbortError') return;
-      console.error('Error accessing directory:', error);
-      alert('Unable to access directory. Please check permissions and try again.');
+      await handleFileSystemError(error as Error);
     } finally {
       setIsLoading(false);
     }
@@ -175,6 +207,12 @@ const Dashboard = () => {
     if (!fileSystem.handle) return;
 
     try {
+      // Verify permission before saving
+      const hasPermission = await verifyPermission(fileSystem.handle);
+      if (!hasPermission) {
+        throw new Error('Permission denied');
+      }
+
       const content = generateMarkdown(question);
       const filename = `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`;
       
@@ -183,15 +221,46 @@ const Dashboard = () => {
       await writable.write(content);
       await writable.close();
     } catch (error) {
-      console.error('Error saving file:', error);
-      alert('Failed to save file. Please check permissions and try again.');
+      await handleFileSystemError(error as Error);
     }
   };
 
+  // Add a retry mechanism for file system operations
+  const retryOperation = async <T,>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3
+  ): Promise<T> => {
+    let lastError: Error | null = null;
+  
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (error instanceof Error) {
+          lastError = error;
+          if (error.name === 'InvalidStateError' && i < maxRetries - 1) {
+            // Try to reload the directory handle
+            await loadDirectory();
+            continue;
+          }
+        } else {
+          lastError = new Error('An unknown error occurred');
+        }
+        break;
+      }
+    }
+  
+    throw lastError;
+  };
+  
   useEffect(() => {
     if (fileSystem.handle && questions.length > 0) {
-      questions.forEach(question => {
-        saveQuestionToFile(question);
+      questions.forEach(async (question) => {
+        try {
+          await retryOperation(() => saveQuestionToFile(question));
+        } catch (error) {
+          await handleFileSystemError(error as Error);
+        }
       });
     }
   }, [questions, fileSystem.handle]);
