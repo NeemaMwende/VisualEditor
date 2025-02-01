@@ -292,7 +292,7 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
   let normalized = text.replace(/\r\n/g, '\n');
   normalized = normalized.replace(/(\n\s*\n)/g, '\n');
   
-  // First, preserve existing code blocks
+  // preserve existing code blocks
   const existingBlocks: string[] = [];
   normalized = normalized.replace(/```(?:javascript|html)?\n([\s\S]*?)\n```/g, (match, code) => {
     if (code.trim()) {
@@ -302,7 +302,6 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
     return '';
   });
 
-  // Then detect and format new code blocks
   const detectedBlocks = findCodeBlocks(normalized);
   let result = normalized;
 
