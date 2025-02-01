@@ -19,12 +19,12 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     const sections = cleanedContent.split(/^# /m).filter(Boolean);
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {sections.map((section, index) => {
           const [title, ...contentLines] = section.split('\n');
           const content = contentLines.join('\n');
 
-          // Handle code blocks - now removing language tags
+          // Handle code blocks
           const formattedContent = content.split('```').map((block, blockIndex) => {
             if (blockIndex % 2 === 1) {
               const codeContent = block.replace(/^(javascript|html|\w+)?\n/, '').trim();
