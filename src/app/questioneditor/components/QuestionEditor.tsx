@@ -415,7 +415,7 @@ const handleFormatToggle = (enableFormatting: boolean) => {
           create: true,
         });
         const writable = await fileHandle.createWritable();
-        await writable.write(generatedMarkdown || ""); // Default to empty string
+        await writable.write(generatedMarkdown || "");
         await writable.close();
       }
   
@@ -495,27 +495,17 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       </div>
 
       <div className="bg-white shadow-sm form-content p-3 sm:p-6 rounded-lg space-y-4 sm:space-y-6">
-        <FormattingControls />
-        
         {showMarkdown ? (
-          // <div className="space-y-4">
-          //   <label className="block text-gray-700 text-sm font-bold">
-          //     Markdown Content
-          //   </label>
-          //   <textarea
-          //     value={markdownContent}
-          //     onChange={(e) => handleMarkdownUpdate(e.target.value)}
-          //     className="w-full p-4 bg-gray-50 rounded-md font-mono text-sm"
-          //     rows={20}
-          //   />
-          // </div>
-          <div className="space-y-4">
-          <MarkdownPreview
-            markdown={markdownContent}
-            onMarkdownChange={handleMarkdownUpdate}
-            isFullScreen={false}
-          />
-        </div>
+          <>
+            <FormattingControls />
+            <div className="space-y-4">
+              <MarkdownPreview
+                markdown={markdownContent}
+                onMarkdownChange={handleMarkdownUpdate}
+                isFullScreen={false}
+              />
+            </div>
+          </>
         ) : (
           <div className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
@@ -557,8 +547,10 @@ const handleFormatToggle = (enableFormatting: boolean) => {
                 Tags
               </label>
               <TagSelector
-                  selectedTags={tags}
-                  onTagsChange={setTags} files={[]}              />
+                selectedTags={tags}
+                onTagsChange={setTags}
+                files={[]}
+              />
             </div>
 
             <TextSelectionFormatter 
@@ -635,11 +627,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
                         answerRefs.current[index] = el;
                       }}
                       value={answer.text}
-                      // onChange={(e) => {
-                      //   const newAnswers = [...answers];
-                      //   newAnswers[index] = { ...answer, text: e.target.value };
-                      //   setAnswers(newAnswers);
-                      // }}
                       onChange={(e) => handleAnswerChange(index, e.target.value)}
                       className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={2}
