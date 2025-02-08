@@ -8,7 +8,6 @@ import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
 import TextSelectionFormatter from '@/app/components/TextSelectionFormatter';
 import MarkdownPreview from './MarkdownPreview';
-
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
