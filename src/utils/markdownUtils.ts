@@ -25,6 +25,8 @@ export interface FormattingOptions {
   enableCodeFormatting: boolean;
   defaultLanguage: 'javascript' | 'html';
 }
+
+
 const isCodeBlock = (text: string): boolean => {
   const patterns = [
     // HTML-specific patterns 
@@ -135,7 +137,6 @@ const findCodeBlocks = (text: string): {
 
   return blocks;
 };
-
  
   export const synchronizeMarkdownFormatting = (
     text: string,
@@ -250,42 +251,6 @@ const processMarkdownBlock = (
   return result.trim();
 };
 
-export const generateMarkdown = (
-  question: BaseQuestion,
-  enableFormatting: boolean = true,
-  defaultLanguage: 'javascript' | 'html' = 'javascript'
-): string => {
-  if (!question || typeof question !== 'object') return '';
-
-  try {
-    const tagString = Array.isArray(question.tags) ? question.tags.join(' ') : '';
-    let md = '---\n';
-    md += `difficulty: ${question.difficulty || 1}\n`;
-    md += `tags: ${tagString}\n`;
-    md += '---\n\n';
-
-    const questionText = question.question.trim();
-    if (questionText) {
-      const processedQuestion = processMarkdownBlock(questionText, defaultLanguage, enableFormatting);
-      md += processedQuestion + '\n\n';
-    }
-
-    if (Array.isArray(question.answers)) {
-      question.answers.forEach((answer) => {
-        if (answer && typeof answer === 'object') {
-          md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
-          const processedAnswer = processMarkdownBlock(answer.text.trim(), defaultLanguage, enableFormatting);
-          md += processedAnswer + '\n\n';
-        }
-      });
-    }
-
-    return md.trim();
-  } catch (error) {
-    console.error('Error generating markdown:', error);
-    return '';
-  }
-};
 const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): string => {
   if (!text) return '';
 
@@ -324,13 +289,51 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
 
   return result.trim();
 };
+
+export const generateMarkdown = (
+  question: BaseQuestion,
+  enableFormatting: boolean = true,
+  defaultLanguage: 'javascript' | 'html' = 'javascript'
+): string => {
+  if (!question || typeof question !== 'object') return '';
+
+  try {
+    const tagString = Array.isArray(question.tags) ? question.tags.join(' ') : '';
+    let md = '---\n';
+    md += `difficulty: ${question.difficulty || 1}\n`;
+    md += `tags: ${tagString}\n`;
+    md += '---\n\n';
+
+    const questionText = question.question.trim();
+    if (questionText) {
+      const processedQuestion = processMarkdownBlock(questionText, defaultLanguage, enableFormatting);
+      md += processedQuestion + '\n\n';
+    }
+
+    if (Array.isArray(question.answers)) {
+      question.answers.forEach((answer) => {
+        if (answer && typeof answer === 'object') {
+          md += `# ${answer.isCorrect ? 'Correct' : ''}\n\n`;
+          const processedAnswer = processMarkdownBlock(answer.text.trim(), defaultLanguage, enableFormatting);
+          md += processedAnswer + '\n\n';
+        }
+      });
+    }
+
+    return md.trim();
+  } catch (error) {
+    console.error('Error generating markdown:', error);
+    return '';
+  }
+};
+
 export const parseMarkdownContent = (
   content: string,
   formattingOptions: FormattingOptions = {
     enableCodeFormatting: true,
     defaultLanguage: 'javascript',
   }
-): {
+ ): {
   title: string;
   question: string;
   answers: Array<{ id: string; text: string; isCorrect: boolean }>;
