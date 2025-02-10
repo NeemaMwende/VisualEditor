@@ -31,6 +31,11 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     jsx: { grammar: Prism.languages.jsx, name: 'jsx' }
   };
 
+  // Function to strip metadata
+  const stripMetadata = (content: string) => {
+    return content.replace(/^---\s*\ndifficulty:.*\ntags:.*\n---\s*\n/m, '');
+  };
+
   // Function to detect and process code blocks
   const detectCodeBlocks = (content: string) => {
     const codeBlockRegex = /```(html|javascript|js|jsx)?\n([\s\S]*?)```/gi;
@@ -38,9 +43,14 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     let match;
 
     while ((match = codeBlockRegex.exec(content)) !== null) {
-      let lang = (match[1] || 'javascript').toLowerCase();
-      // Normalize language identifiers
-      if (lang === 'js') lang = 'javascript';
+      let lang = match[1]?.toLowerCase() || '';
+      
+      // Better language detection
+      if (!lang || lang === 'js') {
+        // Try to detect if it's HTML by looking for common HTML tags
+        const hasHtmlTags = /<[^>]+>/.test(match[2]);
+        lang = hasHtmlTags ? 'html' : 'javascript';
+      }
       
       blocks.push({
         lang,
@@ -82,7 +92,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         after;
     }
 
-    // Highlight markdown syntax
+    // Highlight markdown syntax including metadata
     highlightedContent = highlightedContent
       .split('\n')
       .map(line => {
@@ -90,6 +100,14 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         if (line.startsWith('#')) {
           const [hashes, ...text] = line.split(' ');
           return `<span class="token title important">${hashes}</span> ${text.join(' ')}`;
+        }
+        // Metadata
+        if (line.match(/^(difficulty|tags):/)) {
+          const [key, ...value] = line.split(':');
+          return `<span class="token property">${key}:</span>${value.join(':')}`;
+        }
+        if (line === '---') {
+          return `<span class="token hr">---</span>`;
         }
         return line;
       })
@@ -116,7 +134,9 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   };
 
   const renderMarkdown = (content: string) => {
-    const sections = content.split(/^# /m).filter(Boolean);
+    // Strip metadata before rendering
+    const cleanContent = stripMetadata(content);
+    const sections = cleanContent.split(/^# /m).filter(Boolean);
 
     return (
       <div className="space-y-4">
@@ -127,8 +147,14 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
           const formattedContent = content.split('```').map((block, blockIndex) => {
             if (blockIndex % 2 === 1) {
               const [firstLine, ...rest] = block.split('\n');
-              let language = (firstLine.trim() || 'javascript').toLowerCase();
-              if (language === 'js') language = 'javascript';
+              let language = firstLine.trim().toLowerCase();
+              
+              // Improved language detection for preview
+              if (!language || language === 'js') {
+                const codeContent = rest.join('\n').trim();
+                const hasHtmlTags = /<[^>]+>/.test(codeContent);
+                language = hasHtmlTags ? 'html' : 'javascript';
+              }
               
               const langConfig = languageMap[language as keyof typeof languageMap] || languageMap.javascript;
               const codeContent = rest.join('\n').trim();
