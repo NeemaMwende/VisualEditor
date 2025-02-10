@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { TabsList, TabsTrigger, TabsContent, Tabs } from '@/components/ui/tabs';
 import { Eye, Edit } from 'lucide-react';
@@ -6,14 +6,13 @@ import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-markup';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-typescript';
 import 'prismjs/themes/prism-tomorrow.css';
 
 interface MarkdownPreviewProps {
   markdown: string;
   onMarkdownChange: (markdown: string) => void;
   isFullScreen?: boolean;
+  defaultLanguage?: string;
 }
 
 const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
@@ -22,124 +21,177 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   isFullScreen = false,
 }) => {
   const [activeTab, setActiveTab] = useState('edit');
-  const [editorContent, setEditorContent] = useState(markdown);
-  const [highlightedEditor, setHighlightedEditor] = useState<string>('');
+  const [editableContent, setEditableContent] = useState(markdown);
+  const [highlightedEditor, setHighlightedEditor] = useState('');
+  const [detectedLanguages, setDetectedLanguages] = useState<{ [key: number]: string }>({});
 
-  useEffect(() => {
-    setEditorContent(markdown);
-  }, [markdown]);
+  const languageMap = {
+    html: { grammar: Prism.languages.markup, name: 'markup' },
+    javascript: { grammar: Prism.languages.javascript, name: 'javascript' },
+  };
 
-  const detectLanguage = useCallback((code: string): string => {
-    const tsPattern = /\bnew\s+\w+<\w+>/;
-    if (tsPattern.test(code)) {
-      return 'typescript';
+  const stripMetadata = (content: string) => {
+    return content.replace(/^---\s*\ndifficulty:.*\ntags:.*\n---\s*\n/m, '');
+  };
+
+  const detectCodeBlocks = (content: string) => {
+    const codeBlockRegex = /```(html|javascript|js|jsx)?\n([\s\S]*?)```/gi;
+    const blocks: { lang: string; content: string; start: number; end: number }[] = [];
+    let match;
+    const newDetectedLanguages: { [key: number]: string } = {};
+  
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      let lang = match[1]?.toLowerCase() || '';
+      if (!lang || lang === 'js') {
+        const hasHtmlTags = /<[^>]+>/.test(match[2]);
+        lang = hasHtmlTags ? 'html' : 'javascript';
+      }
+      newDetectedLanguages[match.index] = lang;
+      blocks.push({
+        lang,
+        content: match[2],
+        start: match.index,
+        end: match.index + match[0].length
+      });
+    }
+    setDetectedLanguages(newDetectedLanguages); 
+    return blocks;
+  };
+
+  const safeHighlight = (code: string, lang: string) => {
+    try {
+      const language = lang.toLowerCase();
+      const langConfig = languageMap[language as keyof typeof languageMap] || languageMap.javascript;
+      return Prism.highlight(code, langConfig.grammar, langConfig.name);
+    } catch (error) {
+      console.warn(`Failed to highlight ${lang} code:`, error);
+      return code;
+    }
+  };
+
+  const highlightEditorContent = (content: string) => {
+    let highlightedContent = content;
+    const codeBlocks = detectCodeBlocks(content);
+    
+    for (const block of codeBlocks.reverse()) {
+      const highlightedCode = safeHighlight(block.content, block.lang);
+      const before = highlightedContent.slice(0, block.start);
+      const after = highlightedContent.slice(block.end);
+      highlightedContent = before + 
+        `<span class="token keyword" style="color: #ff79c6">\`\`\`${block.lang}</span>\n` +
+        highlightedCode +
+        '\n<span class="token keyword" style="color: #ff79c6">```</span>' +
+        after;
     }
 
-    const htmlPatterns = [/<[^>]+>/, /<!DOCTYPE\s+html>/i, /<html\b/i, /<\/[a-z]+>/i];
-    const jsPatterns = [/\b(const|let|var|function)\b/, /=>/, /\bimport\b/, /\bexport\b/];
+    highlightedContent = highlightedContent
+      .split('\n')
+      .map(line => {
+        if (line.startsWith('#')) {
+          const [hashes, ...text] = line.split(' ');
+          return `<span class="token title important" style="color:rgb(224, 146, 29)">${hashes}</span> ${text.join(' ')}`;
+        }
+        if (line.match(/^(difficulty|tags):/)) {
+          const [key, ...value] = line.split(':');
+          return `<span class="token property" style="color:rgb(224, 146, 29)">${key}:</span>${value.join(':')}`;
+        }
+        if (line === '---') {
+          return `<span class="token hr" style="color: rgb(224, 146, 29)">---</span>`;
+        }
+        return line;
+      })
+      .join('\n');
 
-    const isHTML = htmlPatterns.some(pattern => pattern.test(code));
-    const isJS = jsPatterns.some(pattern => pattern.test(code));
-
-    return isHTML ? 'html' : isJS ? 'javascript' : 'javascript';
-  }, []);
-
-  const applyCustomStyling = (content: string): string => {
-    return content
-      .replace(/^# (.+)/gm, '<span class="text-orange-500 font-bold"># $1</span>')
-      .replace(/\b(Correct)\b/g, '<span class="text-orange-500 font-bold">$1</span>') 
-      .replace(/\b(html)\b/g, '<span class="text-purple-500 font-bold">$1</span>') 
-      .replace(/\b(javascript)\b/g, '<span class="text-yellow-500 font-bold">$1</span>') 
-      .replace(/\bfalse\b/g, '<span class="text-orange-500 font-bold">false</span>') 
-      .replace(/\btrue\b/g, '<span class="text-blue-500 font-bold">true</span>');
+    setHighlightedEditor(highlightedContent);
   };
-
-  const highlightMarkdown = useCallback((content: string) => {
-    return content.split(/^(```[^\n]*\n[\s\S]*?\n```)/gm).map((block) => {
-      if (block.startsWith('```')) {
-        const [firstLine, ...rest] = block.split('\n');
-        const languageFromBlock = firstLine.slice(3).trim();
-        const code = rest.slice(0, -1).join('\n');
-        const language = languageFromBlock || detectLanguage(code);
-        const langForPrism = language === 'html' ? 'markup' : language;
-
-        const highlightedCode = Prism.highlight(
-          code,
-          Prism.languages[langForPrism] || Prism.languages.javascript,
-          langForPrism
-        );
-
-        return `<div class="relative rounded-md overflow-hidden bg-gray-800 my-4">
-          <div class="absolute top-3 right-3 text-xs text-gray-400">${language}</div>
-          <pre class="p-6"><code class="language-${langForPrism}">${highlightedCode}</code></pre>
-        </div>`;
-      }
-      return applyCustomStyling(block);
-    }).join('');
-  }, [detectLanguage]);
 
   useEffect(() => {
-    const highlighted = highlightMarkdown(editorContent);
-    setHighlightedEditor(highlighted);
-  }, [editorContent, highlightMarkdown]);
+    highlightEditorContent(markdown);
+  }, [markdown]);
 
-  const renderEditor = useCallback(() => (
-    <div className="relative grid">
-      <textarea
-        value={editorContent}
-        onChange={(e) => {
-          setEditorContent(e.target.value);
-          onMarkdownChange(e.target.value);
-        }}
-        className="w-full h-full min-h-[400px] p-6 font-mono text-sm bg-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none absolute inset-0 text-transparent caret-gray-700"
-        placeholder="Enter markdown content..."
-        spellCheck={false}
-      />
-      <div 
-        className="w-full h-full min-h-[400px] p-6 font-mono text-sm whitespace-pre-wrap break-words pointer-events-none"
-        dangerouslySetInnerHTML={{ __html: highlightedEditor }}
-      />
-    </div>
-  ), [editorContent, highlightedEditor, onMarkdownChange]);
+  useEffect(() => {
+    if (activeTab === 'preview') {
+      setTimeout(() => Prism.highlightAll(), 0);
+    }
+  }, [activeTab, editableContent]);
 
-  const removeMetadata = (content: string): string => {
-    return content.replace(/^---[\s\S]+?---\n*/, '').trim();
+  const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setEditableContent(newContent);
+    onMarkdownChange(newContent);
+    highlightEditorContent(newContent);
   };
 
-  const renderMarkdown = useCallback((content: string) => {
-    const cleanedContent = removeMetadata(content);
-    const sections = cleanedContent.split(/^# /m).filter(Boolean);
-
+  const renderMarkdown = (content: string) => {
+    const cleanContent = stripMetadata(content);
+    const sections = cleanContent.split(/^# /m).filter(Boolean);
+  
     return (
-      <div className="space-y-6">
-        {sections.map((section, sectionIndex) => {
+      <div className="space-y-4">
+        {sections.map((section, index) => {
           const [title, ...contentLines] = section.split('\n');
           const content = contentLines.join('\n');
-          const formattedContent = highlightMarkdown(content);
-
+  
+          const formattedContent = content.split('```').map((block, blockIndex) => {
+            if (blockIndex % 2 === 1) {
+              const [firstLine, ...rest] = block.split('\n');
+              const language = firstLine.trim().toLowerCase();
+              const detectedLanguage = detectedLanguages[content.indexOf(block)] || language || 'javascript';
+              const langConfig = languageMap[detectedLanguage as keyof typeof languageMap] || languageMap.javascript;
+              const codeContent = rest.join('\n').trim();
+  
+              return (
+                <pre key={blockIndex} className="relative rounded-md overflow-hidden bg-gray-900">
+                  <code className={`language-${langConfig.name} block p-4 overflow-x-auto text-white`}>
+                    {codeContent}
+                  </code>
+                </pre>
+              );
+            }
+            return <p key={blockIndex} className="whitespace-pre-wrap text-gray-900">{block}</p>;
+          });
+  
           return (
-            <div key={sectionIndex} className="space-y-4">
-              {title && <h3 className="text-lg font-semibold mb-4">{title.trim()}</h3>}
-              <div 
-                className="prose prose-gray max-w-none"
-                dangerouslySetInnerHTML={{ __html: formattedContent }}
-              />
+            <div key={index} className="space-y-2">
+              {title && <h3 className="text-lg font-semibold text-gray-900">{title.trim()}</h3>}
+              <div className="prose max-w-none">{formattedContent}</div>
             </div>
           );
         })}
       </div>
     );
-  }, [highlightMarkdown]);
+  };
 
-  useEffect(() => {
-    if (activeTab === 'preview') {
-      Prism.highlightAll();
-    }
-  }, [activeTab, markdown]);
+  const renderEditor = () => {
+    const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+      const textarea = e.currentTarget;
+      const overlay = textarea.nextElementSibling as HTMLElement;
+      if (overlay) {
+        overlay.scrollTop = textarea.scrollTop;
+      }
+    };
+  
+    return (
+      <div className="relative h-full">
+        <textarea
+          value={editableContent}
+          onChange={handleEditorChange}
+          onScroll={handleScroll}
+          className="w-full h-full min-h-[300px] p-4 font-mono text-sm bg-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto text-gray-900"
+          placeholder="Enter markdown content..."
+          spellCheck={false}
+        />
+        <div
+          className="absolute top-0 left-0 w-full h-full pointer-events-none p-4 font-mono text-sm whitespace-pre-wrap overflow-y-auto bg-white"
+          dangerouslySetInnerHTML={{ __html: highlightedEditor }}
+        />
+      </div>
+    );
+  };
 
   return (
-    <Card className={`${isFullScreen ? 'h-full' : ''}`}>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <Card className={`${isFullScreen ? 'h-full' : ''} flex flex-col bg-white`}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="edit" className="flex items-center gap-2">
             <Edit size={16} />
@@ -151,13 +203,13 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="edit" className="min-h-[400px]">
+        <TabsContent value="edit" className="flex-1 min-h-0">
           {renderEditor()}
         </TabsContent>
 
-        <TabsContent value="preview" className="min-h-[400px]">
-          <div className="p-6 prose prose-gray max-w-none">
-            {renderMarkdown(markdown)}
+        <TabsContent value="preview" className="flex-1 min-h-0 overflow-auto">
+          <div className="p-4 prose max-w-none">
+            {renderMarkdown(editableContent)}
           </div>
         </TabsContent>
       </Tabs>

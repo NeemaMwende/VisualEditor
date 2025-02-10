@@ -134,74 +134,80 @@ const Dashboard = () => {
   };
 
   const handleFileSystemError = async (error: Error) => {
-    console.error('File system error:', error);
-    
-    if (error.name === 'InvalidStateError') {
-      setFileSystem({ handle: null, path: '' });
-      
-      // Notify user and prompt to reload directory
-      if (window.confirm('File system access has expired. Would you like to reload the directory?')) {
+    console.error("File system error:", error);
+  
+    if (error.name === "InvalidStateError") {
+      setFileSystem({ handle: null, path: "" });
+  
+      // Automatically prompt the user to reload the directory
+      if (window.confirm("File system access has expired. Would you like to reload the directory?")) {
         await loadDirectory();
       }
     } else {
       alert(`File system error: ${error.message}`);
     }
   };
+  
 
   const loadDirectory = async () => {
     if (!window.showDirectoryPicker) {
-      console.error('Directory picker is not supported in this environment');
-      return;
+        console.error("Directory picker is not supported in this environment");
+        return;
     }
 
     setIsLoading(true);
     try {
-      // Request access to a directory
-      const handle = await window.showDirectoryPicker();
-      
-      // Verify we have permission
-      const hasPermission = await verifyPermission(handle);
-      if (!hasPermission) {
-        throw new Error('Permission denied');
-      }
+        // Always prompt the user to select a new directory
+        const handle = await window.showDirectoryPicker();
 
-      setFileSystem({ handle, path: handle.name });
-      const loadedQuestions: DashboardQuestion[] = [];
-
-      for await (const entry of handle.values()) {
-        if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-          try {
-            const fileHandle = entry as FileSystemFileHandle;
-            const file = await fileHandle.getFile();
-            const content = await file.text();
-
-            const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
-            if (parsedData) {
-              loadedQuestions.push({
-                ...parsedData,
-                id: entry.name.replace('.md', ''),
-                markdownContent: content,
-                type: 'question',
-                isExpanded: false,
-                title: parsedData.title || entry.name.replace('.md', ''),
-                onEditMarkdown: () => {},
-                enableCodeFormatting: parsedData.enableCodeFormatting ?? true,
-              });
-            }
-          } catch (error) {
-            console.error(`Error parsing ${entry.name}:`, error);
-          }
+        // Verify we have permission
+        const hasPermission = await verifyPermission(handle);
+        if (!hasPermission) {
+            throw new Error("Permission denied");
         }
-      }
 
-      setQuestions(loadedQuestions);
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') return;
-      await handleFileSystemError(error as Error);
+        setFileSystem({ handle, path: handle.name });
+
+        const loadedQuestions: DashboardQuestion[] = [];
+
+        for await (const entry of handle.values()) {
+            if (entry.kind === "file" && entry.name.endsWith(".md")) {
+                try {
+                
+                    const fileHandle = entry as FileSystemFileHandle;
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+
+                    const parsedData = parseMarkdownContent(content) as ParsedMarkdownData;
+
+                    if (parsedData) {
+                        loadedQuestions.push({
+                            ...parsedData,
+                            id: entry.name.replace(".md", ""),
+                            markdownContent: content,
+                            type: "question", 
+                            isExpanded: false,
+                            title: parsedData.title || entry.name.replace(".md", ""),
+                            onEditMarkdown: () => {},
+                            enableCodeFormatting: parsedData.enableCodeFormatting ?? true,
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error parsing ${entry.name}:`, error);
+                }
+            }
+        }
+
+        setQuestions(loadedQuestions);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            await handleFileSystemError(error);
+        }
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
+
   
   const saveQuestionToFile = async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
@@ -239,7 +245,6 @@ const Dashboard = () => {
         if (error instanceof Error) {
           lastError = error;
           if (error.name === 'InvalidStateError' && i < maxRetries - 1) {
-            // Try to reload the directory handle
             await loadDirectory();
             continue;
           }
