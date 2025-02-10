@@ -78,9 +78,9 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       const before = highlightedContent.slice(0, block.start);
       const after = highlightedContent.slice(block.end);
       highlightedContent = before + 
-        `<span class="token keyword" style="color:rgb(240, 150, 14)">\`\`\`${block.lang}</span>\n` +
+        `<span class="token keyword" style="color: #ff79c6">\`\`\`${block.lang}</span>\n` +
         highlightedCode +
-        '\n<span class="token keyword" style="color:rgb(240, 150, 14)">```</span>' +
+        '\n<span class="token keyword" style="color: #ff79c6">```</span>' +
         after;
     }
 
@@ -89,14 +89,14 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       .map(line => {
         if (line.startsWith('#')) {
           const [hashes, ...text] = line.split(' ');
-          return `<span class="token title important" style="color:rgb(240, 150, 14)">${hashes}</span> ${text.join(' ')}`;
+          return `<span class="token title important" style="color:rgb(224, 146, 29)">${hashes}</span> ${text.join(' ')}`;
         }
         if (line.match(/^(difficulty|tags):/)) {
           const [key, ...value] = line.split(':');
-          return `<span class="token property" style="color:rgb(230, 150, 46)">${key}:</span>${value.join(':')}`;
+          return `<span class="token property" style="color:rgb(224, 146, 29)">${key}:</span>${value.join(':')}`;
         }
         if (line === '---') {
-          return `<span class="token hr" style="color:rgb(240, 150, 14)">---</span>`;
+          return `<span class="token hr" style="color: rgb(224, 146, 29)">---</span>`;
         }
         return line;
       })
