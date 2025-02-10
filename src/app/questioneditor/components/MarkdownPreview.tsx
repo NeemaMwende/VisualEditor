@@ -12,6 +12,7 @@ interface MarkdownPreviewProps {
   markdown: string;
   onMarkdownChange: (markdown: string) => void;
   isFullScreen?: boolean;
+  defaultLanguage?: string;
 }
 
 const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
@@ -22,36 +23,30 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   const [activeTab, setActiveTab] = useState('edit');
   const [editableContent, setEditableContent] = useState(markdown);
   const [highlightedEditor, setHighlightedEditor] = useState('');
+  const [detectedLanguages, setDetectedLanguages] = useState<{ [key: number]: string }>({});
 
-  // Language configuration map
   const languageMap = {
     html: { grammar: Prism.languages.markup, name: 'markup' },
     javascript: { grammar: Prism.languages.javascript, name: 'javascript' },
-    js: { grammar: Prism.languages.javascript, name: 'javascript' },
-    jsx: { grammar: Prism.languages.jsx, name: 'jsx' }
   };
 
-  // Function to strip metadata
   const stripMetadata = (content: string) => {
     return content.replace(/^---\s*\ndifficulty:.*\ntags:.*\n---\s*\n/m, '');
   };
 
-  // Function to detect and process code blocks
   const detectCodeBlocks = (content: string) => {
     const codeBlockRegex = /```(html|javascript|js|jsx)?\n([\s\S]*?)```/gi;
     const blocks: { lang: string; content: string; start: number; end: number }[] = [];
     let match;
-
+    const newDetectedLanguages: { [key: number]: string } = {};
+  
     while ((match = codeBlockRegex.exec(content)) !== null) {
       let lang = match[1]?.toLowerCase() || '';
-      
-      // Better language detection
       if (!lang || lang === 'js') {
-        // Try to detect if it's HTML by looking for common HTML tags
         const hasHtmlTags = /<[^>]+>/.test(match[2]);
         lang = hasHtmlTags ? 'html' : 'javascript';
       }
-      
+      newDetectedLanguages[match.index] = lang;
       blocks.push({
         lang,
         content: match[2],
@@ -59,10 +54,10 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         end: match.index + match[0].length
       });
     }
+    setDetectedLanguages(newDetectedLanguages); 
     return blocks;
   };
 
-  // Safe highlight function
   const safeHighlight = (code: string, lang: string) => {
     try {
       const language = lang.toLowerCase();
@@ -74,40 +69,34 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     }
   };
 
-  // Highlight editor content
   const highlightEditorContent = (content: string) => {
     let highlightedContent = content;
     const codeBlocks = detectCodeBlocks(content);
     
-    // Process code blocks from end to start
     for (const block of codeBlocks.reverse()) {
       const highlightedCode = safeHighlight(block.content, block.lang);
-      
       const before = highlightedContent.slice(0, block.start);
       const after = highlightedContent.slice(block.end);
       highlightedContent = before + 
-        `<span class="token keyword">\`\`\`${block.lang}</span>\n` +
+        `<span class="token keyword" style="color:rgb(240, 150, 14)">\`\`\`${block.lang}</span>\n` +
         highlightedCode +
-        '\n<span class="token keyword">```</span>' +
+        '\n<span class="token keyword" style="color:rgb(240, 150, 14)">```</span>' +
         after;
     }
 
-    // Highlight markdown syntax including metadata
     highlightedContent = highlightedContent
       .split('\n')
       .map(line => {
-        // Headers
         if (line.startsWith('#')) {
           const [hashes, ...text] = line.split(' ');
-          return `<span class="token title important">${hashes}</span> ${text.join(' ')}`;
+          return `<span class="token title important" style="color:rgb(240, 150, 14)">${hashes}</span> ${text.join(' ')}`;
         }
-        // Metadata
         if (line.match(/^(difficulty|tags):/)) {
           const [key, ...value] = line.split(':');
-          return `<span class="token property">${key}:</span>${value.join(':')}`;
+          return `<span class="token property" style="color:rgb(230, 150, 46)">${key}:</span>${value.join(':')}`;
         }
         if (line === '---') {
-          return `<span class="token hr">---</span>`;
+          return `<span class="token hr" style="color:rgb(240, 150, 14)">---</span>`;
         }
         return line;
       })
@@ -134,48 +123,37 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   };
 
   const renderMarkdown = (content: string) => {
-    // Strip metadata before rendering
     const cleanContent = stripMetadata(content);
     const sections = cleanContent.split(/^# /m).filter(Boolean);
-
+  
     return (
       <div className="space-y-4">
         {sections.map((section, index) => {
           const [title, ...contentLines] = section.split('\n');
           const content = contentLines.join('\n');
-
+  
           const formattedContent = content.split('```').map((block, blockIndex) => {
             if (blockIndex % 2 === 1) {
               const [firstLine, ...rest] = block.split('\n');
-              let language = firstLine.trim().toLowerCase();
-              
-              // Improved language detection for preview
-              if (!language || language === 'js') {
-                const codeContent = rest.join('\n').trim();
-                const hasHtmlTags = /<[^>]+>/.test(codeContent);
-                language = hasHtmlTags ? 'html' : 'javascript';
-              }
-              
-              const langConfig = languageMap[language as keyof typeof languageMap] || languageMap.javascript;
+              const language = firstLine.trim().toLowerCase();
+              const detectedLanguage = detectedLanguages[content.indexOf(block)] || language || 'javascript';
+              const langConfig = languageMap[detectedLanguage as keyof typeof languageMap] || languageMap.javascript;
               const codeContent = rest.join('\n').trim();
-
+  
               return (
-                <pre key={blockIndex} className="relative rounded-md overflow-hidden bg-gray-800">
-                  <div className="absolute right-2 top-2 text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
-                    {language}
-                  </div>
-                  <code className={`language-${langConfig.name} block p-4 overflow-x-auto`}>
+                <pre key={blockIndex} className="relative rounded-md overflow-hidden bg-gray-900">
+                  <code className={`language-${langConfig.name} block p-4 overflow-x-auto text-white`}>
                     {codeContent}
                   </code>
                 </pre>
               );
             }
-            return <p key={blockIndex} className="whitespace-pre-wrap text-gray-800">{block}</p>;
+            return <p key={blockIndex} className="whitespace-pre-wrap text-gray-900">{block}</p>;
           });
-
+  
           return (
             <div key={index} className="space-y-2">
-              {title && <h3 className="text-lg font-semibold text-gray-800">{title.trim()}</h3>}
+              {title && <h3 className="text-lg font-semibold text-gray-900">{title.trim()}</h3>}
               <div className="prose max-w-none">{formattedContent}</div>
             </div>
           );
@@ -199,12 +177,12 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
           value={editableContent}
           onChange={handleEditorChange}
           onScroll={handleScroll}
-          className="w-full h-full min-h-[300px] p-4 font-mono text-sm bg-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
+          className="w-full h-full min-h-[300px] p-4 font-mono text-sm bg-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto text-gray-900"
           placeholder="Enter markdown content..."
           spellCheck={false}
         />
         <div
-          className="absolute top-0 left-0 w-full h-full pointer-events-none p-4 font-mono text-sm whitespace-pre-wrap overflow-y-auto bg-gray-50"
+          className="absolute top-0 left-0 w-full h-full pointer-events-none p-4 font-mono text-sm whitespace-pre-wrap overflow-y-auto bg-white"
           dangerouslySetInnerHTML={{ __html: highlightedEditor }}
         />
       </div>
@@ -212,7 +190,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   };
 
   return (
-    <Card className={`${isFullScreen ? 'h-full' : ''} flex flex-col`}>
+    <Card className={`${isFullScreen ? 'h-full' : ''} flex flex-col bg-white`}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="edit" className="flex items-center gap-2">

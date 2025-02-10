@@ -502,6 +502,7 @@ const handleFormatToggle = (enableFormatting: boolean) => {
                 markdown={markdownContent}
                 onMarkdownChange={handleMarkdownUpdate}
                 isFullScreen={false}
+    
               />
             </div>
           </>
