@@ -5,8 +5,9 @@ import { parseMarkdownContent, generateMarkdown } from './../../utils/markdownUt
 import { Folder, Plus } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { QuestionSkeleton, QuestionEditorSkeleton } from '../Skeleton';
-import dynamic from 'next/dynamic';
 import { DashboardQuestion } from './Interfaces';
+import QuestionEditor from '../questioneditor/components/QuestionEditor';
+import SavedQuestionsList from '../savedquestionslists/components/SavedQuestionsList';
 
 interface ParsedMarkdownData {
   title: string;
@@ -58,21 +59,6 @@ interface FileSystemState {
   path: string;
 }
 
-// Dynamic imports
-const QuestionEditor = dynamic(() => import('../questioneditor/components/QuestionEditor'), {
-  loading: () => <QuestionEditorSkeleton />
-});
-
-const SavedQuestionsList = dynamic(() => import('../savedquestionslists/components/SavedQuestionsList'), {
-  loading: () => (
-    <div className="space-y-4">
-      {[...Array(3)].map((_, i) => (
-        <QuestionSkeleton key={i} />
-      ))}
-    </div>
-  )
-});
-
 const DashboardHeader = ({
   onLoadDirectory,
   onNewQuestion,
@@ -106,6 +92,7 @@ const DashboardHeader = ({
     </div>
   </div>
 );
+
 
 const Dashboard = () => {
   const [questions, setQuestions] = useState<DashboardQuestion[]>([]);
