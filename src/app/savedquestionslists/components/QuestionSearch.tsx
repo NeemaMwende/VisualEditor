@@ -81,7 +81,7 @@ const QuestionSearch: React.FC<QuestionSearchProps> = ({
         question.tags.some(tag => tag.toLowerCase().includes(term)) ||
         question.answers.some(answer => answer.text.toLowerCase().includes(term))
       )
-      .slice(0, 5); // Limit to 5 results for performance
+      .slice(0, 10); 
   };
 
   // Highlight matching text

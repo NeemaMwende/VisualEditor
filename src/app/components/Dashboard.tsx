@@ -120,22 +120,7 @@ const Dashboard = () => {
     return false;
   };
 
-  const handleFileSystemError = useCallback(async (error: Error) => {
-    console.error("File system error:", error);
-  
-    if (error.name === "InvalidStateError") {
-      setFileSystem({ handle: null, path: "" });
-  
-      // Automatically prompt the user to reload the directory
-      if (window.confirm("File system access has expired. Would you like to reload the directory?")) {
-        await loadDirectory();
-      }
-    } else {
-      alert(`File system error: ${error.message}`);
-    }
-  }, []);
-  
-  const loadDirectory = async () => {
+  const loadDirectory = useCallback(async () => {
     if (!window.showDirectoryPicker) {
         console.error("Directory picker is not supported in this environment");
         return;
@@ -187,13 +172,35 @@ const Dashboard = () => {
         setQuestions(loadedQuestions);
     } catch (error: unknown) {
         if (error instanceof Error) {
-            await handleFileSystemError(error);
+            console.error("File system error:", error);
+            if (error.name === "InvalidStateError") {
+                setFileSystem({ handle: null, path: "" });
+                if (window.confirm("File system access has expired. Would you like to reload the directory?")) {
+                    await loadDirectory();
+                }
+            } else {
+                alert(`File system error: ${error.message}`);
+            }
         }
     } finally {
         setIsLoading(false);
     }
-  };
+  }, []);
 
+  const handleFileSystemError = useCallback(async (error: Error) => {
+    console.error("File system error:", error);
+  
+    if (error.name === "InvalidStateError") {
+      setFileSystem({ handle: null, path: "" });
+  
+      // Automatically prompt the user to reload the directory
+      if (window.confirm("File system access has expired. Would you like to reload the directory?")) {
+        await loadDirectory();
+      }
+    } else {
+      alert(`File system error: ${error.message}`);
+    }
+  }, [loadDirectory]);
   
   const saveQuestionToFile = useCallback(async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
@@ -242,7 +249,7 @@ const Dashboard = () => {
     }
   
     throw lastError;
-  }, []);
+  }, [loadDirectory]);
   
   useEffect(() => {
     if (fileSystem.handle && questions.length > 0) {
