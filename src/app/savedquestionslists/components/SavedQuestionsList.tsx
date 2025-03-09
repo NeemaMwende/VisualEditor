@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { DashboardQuestion } from '@/app/components/Interfaces';
+import { MarkdownData, MarkdownEditData, DashboardQuestion } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { Trash2, CheckSquare, Square, RefreshCw } from 'lucide-react';
 import { Question } from '../../components/Dashboard';
@@ -18,6 +18,7 @@ interface SavedQuestionsListProps {
     path: string;
   };
 }
+
 
 interface ParsedMarkdownData {
   codeLanguage: "javascript" | "html" | undefined;
