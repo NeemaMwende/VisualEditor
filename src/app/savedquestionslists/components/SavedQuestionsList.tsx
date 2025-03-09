@@ -288,6 +288,22 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setSearchTerm(term);
   };
 
+  // Handle question selection from search results
+  const handleQuestionSelect = (questionId: string) => {
+    // Find and expand the selected question
+    setQuestions(questions.map(q =>
+      q.id === questionId ? { ...q, isExpanded: true } : q
+    ));
+    
+    // Scroll to the selected question
+    setTimeout(() => {
+      const element = document.getElementById(`question-${questionId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
@@ -347,6 +363,8 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
               <QuestionSearch 
                 onSearch={handleSearch} 
                 placeholder="Search by title, question, tags..." 
+                questions={questions}
+                onQuestionSelect={handleQuestionSelect}
               />
             </div>
           </div>
@@ -360,6 +378,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
             filteredQuestions.map((question) => (
               <div
                 key={question.id}
+                id={`question-${question.id}`}
                 className={`border rounded-lg p-3 sm:p-4 bg-white shadow-sm hover:shadow-md transition-shadow ${
                   selectedQuestions.includes(String(question.id)) ? 'border-blue-500' : ''
                 }`}
