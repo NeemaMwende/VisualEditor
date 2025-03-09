@@ -328,24 +328,29 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         <p className="text-center text-gray-500 italic p-4">No questions created yet. Create New Question to get started.</p>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative w-full flex items-center justify-between gap-4">
             <button
               onClick={toggleSelectAll}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center gap-2"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-2"
             >
               {selectedQuestions.length === filteredQuestions.length && filteredQuestions.length > 0 ? (
                 <Square className="w-4 h-4" />
               ) : (
                 <CheckSquare className="w-4 h-4" />
               )}
-              {selectedQuestions.length === filteredQuestions.length && filteredQuestions.length > 0 ? 'Deselect All' : 'Select All'}
+              {selectedQuestions.length === filteredQuestions.length && filteredQuestions.length > 0
+                ? 'Deselect All'
+                : 'Select All'}
             </button>
-            
-            <QuestionSearch 
-              onSearch={handleSearch} 
-              placeholder="Search by title, question, tags..." 
-            />
+
+            <div className="flex-1">
+              <QuestionSearch 
+                onSearch={handleSearch} 
+                placeholder="Search by title, question, tags..." 
+              />
+            </div>
           </div>
+
           
           {filteredQuestions.length === 0 ? (
             <p className="text-center text-gray-500 italic p-4">
