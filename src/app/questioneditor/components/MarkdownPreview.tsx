@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { TabsList, TabsTrigger, TabsContent, Tabs } from '@/components/ui/tabs';
 import { Eye, Edit } from 'lucide-react';
@@ -23,13 +23,12 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   const [activeTab, setActiveTab] = useState('edit');
   const [editableContent, setEditableContent] = useState(markdown);
   const [highlightedEditor, setHighlightedEditor] = useState('');
-  // Use useRef instead of useState to avoid re-renders
   const detectedLanguagesRef = useRef<{ [key: number]: string }>({});
 
-  const languageMap = {
+  const languageMap = useMemo(() => ({
     html: { grammar: Prism.languages.markup, name: 'markup' },
     javascript: { grammar: Prism.languages.javascript, name: 'javascript' },
-  };
+  }), []);
 
   const stripMetadata = (content: string) => {
     return content.replace(/^---\s*\ndifficulty:.*\ntags:.*\n---\s*\n/m, '');
@@ -69,7 +68,8 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       console.warn(`Failed to highlight ${lang} code:`, error);
       return code;
     }
-  }, [languageMap]);
+  }, [languageMap]); 
+  
 
   const highlightEditorContent = useCallback((content: string) => {
     let highlightedContent = content;
