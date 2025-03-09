@@ -11,6 +11,8 @@ interface SavedQuestionsListProps {
   onEdit: (question: Question) => void;
   setQuestions: React.Dispatch<React.SetStateAction<DashboardQuestion[]>>;
   onEditMarkdown?: (markdown: MarkdownEditData) => void; 
+  markdowns: MarkdownData[];
+  setMarkdowns: React.Dispatch<React.SetStateAction<MarkdownData[]>>;
   fileSystem: {
     handle: FileSystemDirectoryHandle | null;
     path: string;
