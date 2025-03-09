@@ -107,7 +107,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
 
   useEffect(() => {
     highlightEditorContent(markdown);
-  }, [markdown]);
+  }, [markdown, highlightEditorContent]);
 
   useEffect(() => {
     if (activeTab === 'preview') {
