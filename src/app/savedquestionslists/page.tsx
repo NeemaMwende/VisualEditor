@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import SavedQuestionsList from './components/SavedQuestionsList';
 import { DashboardQuestion } from '../components/Interfaces'; 
 import { BaseQuestion, MarkdownData, MarkdownEditData } from '../components/Interfaces';
@@ -23,15 +23,17 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
-      <SavedQuestionsList
-        questions={questions}
-        onEdit={handleEdit}
-        onEditMarkdown={handleEditMarkdown}
-        setQuestions={setQuestions}
-        markdowns={markdowns}
-        setMarkdowns={setMarkdowns}
-        fileSystem={fsState}
-      />
+      <Suspense fallback={<p>Loading saved questions...</p>}>
+        <SavedQuestionsList
+          questions={questions}
+          onEdit={handleEdit}
+          onEditMarkdown={handleEditMarkdown}
+          setQuestions={setQuestions}
+          markdowns={markdowns}
+          setMarkdowns={setMarkdowns}
+          fileSystem={fsState}
+        />
+      </Suspense>
     </main>
   );
 }
