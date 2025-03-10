@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { TabsList, TabsTrigger, TabsContent, Tabs } from '@/components/ui/tabs';
 import { Eye, Edit } from 'lucide-react';
@@ -25,21 +25,21 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   const [highlightedEditor, setHighlightedEditor] = useState('');
   const [detectedLanguages, setDetectedLanguages] = useState<{ [key: number]: string }>({});
 
-  const languageMap = {
+  const languageMap = useMemo(() => ({
     html: { grammar: Prism.languages.markup, name: 'markup' },
     javascript: { grammar: Prism.languages.javascript, name: 'javascript' },
-  };
+  }), []); 
 
-  const stripMetadata = (content: string) => {
+  const stripMetadata = useCallback((content: string) => {
     return content.replace(/^---\s*\ndifficulty:.*\ntags:.*\n---\s*\n/m, '');
-  };
+  }, []);
 
-  const detectCodeBlocks = (content: string) => {
+  const detectCodeBlocks = useCallback((content: string) => {
     const codeBlockRegex = /```(html|javascript|js|jsx)?\n([\s\S]*?)```/gi;
     const blocks: { lang: string; content: string; start: number; end: number }[] = [];
     let match;
     const newDetectedLanguages: { [key: number]: string } = {};
-  
+
     while ((match = codeBlockRegex.exec(content)) !== null) {
       let lang = match[1]?.toLowerCase() || '';
       if (!lang || lang === 'js') {
@@ -54,11 +54,11 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         end: match.index + match[0].length
       });
     }
-    setDetectedLanguages(newDetectedLanguages); 
+    setDetectedLanguages(newDetectedLanguages);
     return blocks;
-  };
+  }, []); 
 
-  const safeHighlight = (code: string, lang: string) => {
+  const safeHighlight = useCallback((code: string, lang: string) => {
     try {
       const language = lang.toLowerCase();
       const langConfig = languageMap[language as keyof typeof languageMap] || languageMap.javascript;
@@ -67,12 +67,12 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       console.warn(`Failed to highlight ${lang} code:`, error);
       return code;
     }
-  };
+  }, [languageMap]); 
 
   const highlightEditorContent = useCallback((content: string) => {
     let highlightedContent = content;
-    const codeBlocks = detectCodeBlocks(content);
-    
+    const codeBlocks = detectCodeBlocks(content); 
+
     for (const block of codeBlocks.reverse()) {
       const highlightedCode = safeHighlight(block.content, block.lang);
       const before = highlightedContent.slice(0, block.start);
@@ -84,30 +84,12 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         after;
     }
 
-    highlightedContent = highlightedContent
-      .split('\n')
-      .map(line => {
-        if (line.startsWith('#')) {
-          const [hashes, ...text] = line.split(' ');
-          return `<span class="token title important" style="color:rgb(224, 146, 29)">${hashes}</span> ${text.join(' ')}`;
-        }
-        if (line.match(/^(difficulty|tags):/)) {
-          const [key, ...value] = line.split(':');
-          return `<span class="token property" style="color:rgb(224, 146, 29)">${key}:</span>${value.join(':')}`;
-        }
-        if (line === '---') {
-          return `<span class="token hr" style="color: rgb(224, 146, 29)">---</span>`;
-        }
-        return line;
-      })
-      .join('\n');
-
     setHighlightedEditor(highlightedContent);
-  }, [detectCodeBlocks, safeHighlight]);
+  }, [detectCodeBlocks, safeHighlight]); 
 
   useEffect(() => {
     highlightEditorContent(markdown);
-  }, [markdown, highlightEditorContent]);
+  }, [markdown, highlightEditorContent]); 
 
   useEffect(() => {
     if (activeTab === 'preview') {
@@ -122,16 +104,16 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     highlightEditorContent(newContent);
   };
 
-  const renderMarkdown = (content: string) => {
+  const renderMarkdown = useCallback((content: string) => {
     const cleanContent = stripMetadata(content);
     const sections = cleanContent.split(/^# /m).filter(Boolean);
-  
+
     return (
       <div className="space-y-4">
         {sections.map((section, index) => {
           const [title, ...contentLines] = section.split('\n');
           const content = contentLines.join('\n');
-  
+
           const formattedContent = content.split('```').map((block, blockIndex) => {
             if (blockIndex % 2 === 1) {
               const [firstLine, ...rest] = block.split('\n');
@@ -139,7 +121,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
               const detectedLanguage = detectedLanguages[content.indexOf(block)] || language || 'javascript';
               const langConfig = languageMap[detectedLanguage as keyof typeof languageMap] || languageMap.javascript;
               const codeContent = rest.join('\n').trim();
-  
+
               return (
                 <pre key={blockIndex} className="relative rounded-md overflow-hidden bg-gray-900">
                   <code className={`language-${langConfig.name} block p-4 overflow-x-auto text-white`}>
@@ -150,7 +132,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
             }
             return <p key={blockIndex} className="whitespace-pre-wrap text-gray-900">{block}</p>;
           });
-  
+
           return (
             <div key={index} className="space-y-2">
               {title && <h3 className="text-lg font-semibold text-gray-900">{title.trim()}</h3>}
@@ -160,7 +142,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         })}
       </div>
     );
-  };
+  }, [detectedLanguages, languageMap, stripMetadata]);
 
   const renderEditor = () => {
     const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -170,7 +152,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         overlay.scrollTop = textarea.scrollTop;
       }
     };
-  
+
     return (
       <div className="relative h-full">
         <textarea

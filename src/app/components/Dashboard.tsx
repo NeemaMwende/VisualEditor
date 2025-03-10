@@ -59,6 +59,7 @@ interface FileSystemState {
   path: string;
 }
 
+
 const DashboardHeader = ({
   onLoadDirectory,
   onNewQuestion,
@@ -120,22 +121,6 @@ const Dashboard = () => {
     return false;
   };
 
-  const handleFileSystemError = useCallback(async (error: Error) => {
-    console.error("File system error:", error);
-  
-    if (error.name === "InvalidStateError") {
-      setFileSystem({ handle: null, path: "" });
-  
-      // Automatically prompt the user to reload the directory
-      if (window.confirm("File system access has expired. Would you like to reload the directory?")) {
-        await loadDirectory();
-      }
-    } else {
-      alert(`File system error: ${error.message}`);
-    }
-  }, []);
-  
-
   const loadDirectory = async () => {
     if (!window.showDirectoryPicker) {
         console.error("Directory picker is not supported in this environment");
@@ -195,7 +180,22 @@ const Dashboard = () => {
     }
 };
 
+  // Fixed useCallback hook by adding loadDirectory as a dependency
+  const handleFileSystemError = useCallback(async (error: Error) => {
+    console.error("File system error:", error);
   
+    if (error.name === "InvalidStateError") {
+      setFileSystem({ handle: null, path: "" });
+  
+      // Automatically prompt the user to reload the directory
+      if (window.confirm("File system access has expired. Would you like to reload the directory?")) {
+        await loadDirectory();
+      }
+    } else {
+      alert(`File system error: ${error.message}`);
+    }
+  }, [loadDirectory]); // Added loadDirectory as a dependency
+ 
   const saveQuestionToFile = useCallback(async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
 
@@ -218,7 +218,7 @@ const Dashboard = () => {
     }
   }, [fileSystem.handle, handleFileSystemError]);
 
-  // Add a retry mechanism for file system operations
+  // Fixed useCallback hook by adding loadDirectory as a dependency
   const retryOperation = useCallback(async <T,>(
     operation: () => Promise<T>,
     maxRetries: number = 3
@@ -243,7 +243,7 @@ const Dashboard = () => {
     }
   
     throw lastError;
-  }, []);
+  }, [loadDirectory]); // Added loadDirectory as a dependency
   
   useEffect(() => {
     if (fileSystem.handle && questions.length > 0) {
