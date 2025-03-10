@@ -12,4 +12,4 @@ npm run dev
 
 ### Pull command: `docker pull neemamwende/visualeditor`
 ### Run command: `docker run -p 3000:3000 neemamwende/visualeditor` 
-### or `npm run dev`
+
