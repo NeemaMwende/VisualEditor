@@ -70,7 +70,6 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     }
   }, [languageMap]); 
   
-
   const highlightEditorContent = useCallback((content: string) => {
     let highlightedContent = content;
     const codeBlocks = detectCodeBlocks(content);
@@ -85,7 +84,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         '\n<span class="token keyword" style="color: #ff79c6">```</span>' +
         after;
     }
-
+  
     highlightedContent = highlightedContent
       .split('\n')
       .map(line => {
@@ -103,10 +102,10 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         return line;
       })
       .join('\n');
-
+  
     return highlightedContent;
   }, [detectCodeBlocks, safeHighlight]);
-
+  
   useEffect(() => {
     // Compute the highlighted content and set state only once
     const highlighted = highlightEditorContent(markdown);
