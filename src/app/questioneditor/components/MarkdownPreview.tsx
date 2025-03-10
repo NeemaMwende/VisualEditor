@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { TabsList, TabsTrigger, TabsContent, Tabs } from '@/components/ui/tabs';
 import { Eye, Edit } from 'lucide-react';
@@ -69,7 +69,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     }
   };
 
-  const highlightEditorContent = (content: string) => {
+  const highlightEditorContent = useCallback((content: string) => {
     let highlightedContent = content;
     const codeBlocks = detectCodeBlocks(content);
     
@@ -103,11 +103,11 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       .join('\n');
 
     setHighlightedEditor(highlightedContent);
-  };
+  }, [detectCodeBlocks, safeHighlight]);
 
   useEffect(() => {
     highlightEditorContent(markdown);
-  }, [markdown]);
+  }, [markdown, highlightEditorContent]);
 
   useEffect(() => {
     if (activeTab === 'preview') {

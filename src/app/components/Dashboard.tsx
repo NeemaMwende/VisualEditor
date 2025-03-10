@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { MarkdownData } from '@/app/components/Interfaces';
 import { parseMarkdownContent, generateMarkdown } from './../../utils/markdownUtils';
 import { Folder, Plus } from 'lucide-react';
@@ -120,7 +120,7 @@ const Dashboard = () => {
     return false;
   };
 
-  const handleFileSystemError = async (error: Error) => {
+  const handleFileSystemError = useCallback(async (error: Error) => {
     console.error("File system error:", error);
   
     if (error.name === "InvalidStateError") {
@@ -133,7 +133,7 @@ const Dashboard = () => {
     } else {
       alert(`File system error: ${error.message}`);
     }
-  };
+  }, []);
   
 
   const loadDirectory = async () => {
@@ -196,7 +196,7 @@ const Dashboard = () => {
 };
 
   
-  const saveQuestionToFile = async (question: DashboardQuestion) => {
+  const saveQuestionToFile = useCallback(async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
 
     try {
@@ -216,10 +216,10 @@ const Dashboard = () => {
     } catch (error) {
       await handleFileSystemError(error as Error);
     }
-  };
+  }, [fileSystem.handle, handleFileSystemError]);
 
   // Add a retry mechanism for file system operations
-  const retryOperation = async <T,>(
+  const retryOperation = useCallback(async <T,>(
     operation: () => Promise<T>,
     maxRetries: number = 3
   ): Promise<T> => {
@@ -243,7 +243,7 @@ const Dashboard = () => {
     }
   
     throw lastError;
-  };
+  }, []);
   
   useEffect(() => {
     if (fileSystem.handle && questions.length > 0) {
@@ -255,7 +255,7 @@ const Dashboard = () => {
         }
       });
     }
-  }, [questions, fileSystem.handle]);
+  }, [questions, fileSystem.handle, handleFileSystemError, retryOperation, saveQuestionToFile]);
 
   const handleSaveMarkdown = (markdownData: MarkdownData) => {
     const updatedMarkdowns = [...markdowns];
