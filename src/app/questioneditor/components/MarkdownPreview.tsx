@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { TabsList, TabsTrigger, TabsContent, Tabs } from '@/components/ui/tabs';
 import { Eye, Edit } from 'lucide-react';
@@ -23,18 +23,18 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   const [activeTab, setActiveTab] = useState('edit');
   const [editableContent, setEditableContent] = useState(markdown);
   const [highlightedEditor, setHighlightedEditor] = useState('');
-  const [detectedLanguages, setDetectedLanguages] = useState<{ [key: number]: string }>({});
+  const detectedLanguagesRef = useRef<{ [key: number]: string }>({});
 
-  const languageMap = {
+  const languageMap = useMemo(() => ({
     html: { grammar: Prism.languages.markup, name: 'markup' },
     javascript: { grammar: Prism.languages.javascript, name: 'javascript' },
-  };
+  }), []);
 
   const stripMetadata = (content: string) => {
     return content.replace(/^---\s*\ndifficulty:.*\ntags:.*\n---\s*\n/m, '');
   };
 
-  const detectCodeBlocks = (content: string) => {
+  const detectCodeBlocks = useCallback((content: string) => {
     const codeBlockRegex = /```(html|javascript|js|jsx)?\n([\s\S]*?)```/gi;
     const blocks: { lang: string; content: string; start: number; end: number }[] = [];
     let match;
@@ -54,11 +54,12 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         end: match.index + match[0].length
       });
     }
-    setDetectedLanguages(newDetectedLanguages); 
+    // Update the ref instead of using setState
+    detectedLanguagesRef.current = newDetectedLanguages;
     return blocks;
-  };
+  }, []);
 
-  const safeHighlight = (code: string, lang: string) => {
+  const safeHighlight = useCallback((code: string, lang: string) => {
     try {
       const language = lang.toLowerCase();
       const langConfig = languageMap[language as keyof typeof languageMap] || languageMap.javascript;
@@ -67,9 +68,10 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       console.warn(`Failed to highlight ${lang} code:`, error);
       return code;
     }
-  };
+  }, [languageMap]); 
+  
 
-  const highlightEditorContent = (content: string) => {
+  const highlightEditorContent = useCallback((content: string) => {
     let highlightedContent = content;
     const codeBlocks = detectCodeBlocks(content);
     
@@ -102,12 +104,14 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       })
       .join('\n');
 
-    setHighlightedEditor(highlightedContent);
-  };
+    return highlightedContent;
+  }, [detectCodeBlocks, safeHighlight]);
 
   useEffect(() => {
-    highlightEditorContent(markdown);
-  }, [markdown]);
+    // Compute the highlighted content and set state only once
+    const highlighted = highlightEditorContent(markdown);
+    setHighlightedEditor(highlighted);
+  }, [markdown, highlightEditorContent]);
 
   useEffect(() => {
     if (activeTab === 'preview') {
@@ -119,7 +123,10 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     const newContent = e.target.value;
     setEditableContent(newContent);
     onMarkdownChange(newContent);
-    highlightEditorContent(newContent);
+    
+    // Compute the highlighted content and set state only once
+    const highlighted = highlightEditorContent(newContent);
+    setHighlightedEditor(highlighted);
   };
 
   const renderMarkdown = (content: string) => {
@@ -136,7 +143,8 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
             if (blockIndex % 2 === 1) {
               const [firstLine, ...rest] = block.split('\n');
               const language = firstLine.trim().toLowerCase();
-              const detectedLanguage = detectedLanguages[content.indexOf(block)] || language || 'javascript';
+              const position = content.indexOf(block);
+              const detectedLanguage = detectedLanguagesRef.current[position] || language || 'javascript';
               const langConfig = languageMap[detectedLanguage as keyof typeof languageMap] || languageMap.javascript;
               const codeContent = rest.join('\n').trim();
   

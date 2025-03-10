@@ -82,7 +82,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     if (answers.length > 0 && answerOrder.length === 0) {
       setAnswerOrder(answers.map(a => a.id));
     }
-  }, [answers]);
+  }, [answers, answerOrder.length]);
 
   // Load initial data
   useEffect(() => {
@@ -134,7 +134,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         }));
       }
     }
-  }, [initialData, isEditing]);
+  }, [initialData, isEditing, formattingOptions.defaultLanguage, formattingOptions.enableCodeFormatting]);
 
   // Sync markdown when content changes
   useEffect(() => {
@@ -159,7 +159,17 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         lastSyncedMarkdownRef.current = newMarkdown;
       }
     }
-  }, [question, answers, difficulty, tags, title, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage, isMarkdownSyncing]);
+  }, [
+    question,
+    answers,
+    difficulty,
+    tags,
+    title,
+    formattingOptions.enableCodeFormatting,
+    formattingOptions.defaultLanguage,
+    isMarkdownSyncing,
+    initialData?.id
+  ]);
 
   const handleMarkdownUpdate = (newContent: string) => {
     if (newContent === lastSyncedMarkdownRef.current) return;
@@ -307,51 +317,53 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       }));
     }
   };
+
   const handleLanguageChange = (newLanguage: 'javascript' | 'html') => {
-    setFormattingOptions(prev => ({
-      ...prev,
-      defaultLanguage: newLanguage
-    }));
-  
-    if (formattingOptions.enableCodeFormatting) {
-      const updateCodeBlockLanguage = (content: string) => {
-        return content.replace(
-          /```(?:javascript|html|)([^\n]*)\n([\s\S]*?)\n```/g,
-          (match, _, code) => {
-            const trimmedCode = code.trim();
-            return `\`\`\`${newLanguage}\n${trimmedCode}\n\`\`\``;
-          }
-        );
-      };
-  
-      const updatedQuestion = updateCodeBlockLanguage(question);
-      const updatedAnswers = answers.map(answer => ({
-        ...answer,
-        text: updateCodeBlockLanguage(answer.text)
-      }));
-  
-      setQuestion(updatedQuestion);
-      setAnswers(updatedAnswers);
-  
-      const updatedMarkdown = generateMarkdown(
-        {
-          id: initialData?.id || uuidv4(),
-          question: updatedQuestion,
-          answers: updatedAnswers,
-          difficulty,
-          tags,
-          title,
-          codeLanguage: newLanguage,
-          enableCodeFormatting: true,
-        },
-        true,
-        newLanguage
+  setFormattingOptions(prev => ({
+    ...prev,
+    defaultLanguage: newLanguage
+  }));
+
+  if (formattingOptions.enableCodeFormatting) {
+    const updateCodeBlockLanguage = (content: string) => {
+      return content.replace(
+        /```(?:javascript|html|)([^\n]*)\n([\s\S]*?)\n```/g,
+        (match, _, code) => {
+          const trimmedCode = code.trim();
+          return `\`\`\`${newLanguage}\n${trimmedCode}\n\`\`\``;
+        }
       );
-  
-      setMarkdownContent(updatedMarkdown);
-      lastSyncedMarkdownRef.current = updatedMarkdown;
-    }
-  };
+    };
+
+    const updatedQuestion = updateCodeBlockLanguage(question);
+    const updatedAnswers = answers.map(answer => ({
+      ...answer,
+      text: updateCodeBlockLanguage(answer.text)
+    }));
+
+    setQuestion(updatedQuestion);
+    setAnswers(updatedAnswers);
+
+    // Generate updated markdown with the new language
+    const updatedMarkdown = generateMarkdown(
+      {
+        id: initialData?.id || uuidv4(),
+        question: updatedQuestion,
+        answers: updatedAnswers,
+        difficulty,
+        tags,
+        title,
+        codeLanguage: newLanguage,
+        enableCodeFormatting: true,
+      },
+      true,
+      newLanguage
+    );
+
+    setMarkdownContent(updatedMarkdown);
+    lastSyncedMarkdownRef.current = updatedMarkdown;
+  }
+};
 
   const randomizeAnswers = () => {
     const newOrder = [...answerOrder];
@@ -502,7 +514,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
                 markdown={markdownContent}
                 onMarkdownChange={handleMarkdownUpdate}
                 isFullScreen={false}
-    
               />
             </div>
           </>

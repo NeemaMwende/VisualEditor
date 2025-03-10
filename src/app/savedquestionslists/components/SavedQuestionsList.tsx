@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MarkdownData, MarkdownEditData, DashboardQuestion } from '@/app/components/Interfaces';
 import { generateMarkdown, parseMarkdownContent } from '../../../utils/markdownUtils';
 import { Trash2, CheckSquare, Square, RefreshCw } from 'lucide-react';
 import { Question } from '../../components/Dashboard';
+import QuestionSearch from './QuestionSearch';
+import { useSearchParams } from 'next/navigation';
 
 interface SavedQuestionsListProps {
   questions: DashboardQuestion[];
   onEdit: (question: Question) => void;
   setQuestions: React.Dispatch<React.SetStateAction<DashboardQuestion[]>>;
-  onEditMarkdown: (markdown: MarkdownEditData) => void;
+  onEditMarkdown?: (markdown: MarkdownEditData) => void; 
   markdowns: MarkdownData[];
   setMarkdowns: React.Dispatch<React.SetStateAction<MarkdownData[]>>;
   fileSystem: {
@@ -16,6 +18,7 @@ interface SavedQuestionsListProps {
     path: string;
   };
 }
+
 
 interface ParsedMarkdownData {
   codeLanguage: "javascript" | "html" | undefined;
@@ -25,14 +28,14 @@ interface ParsedMarkdownData {
   difficulty: number;
   tags: string[];
   markdownContent: string;
-   enableCodeFormatting?: boolean;
+  enableCodeFormatting?: boolean;
 }
 
 const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({ 
   questions, 
   onEdit, 
   setQuestions,
-  fileSystem,
+  fileSystem
 }) => {
   const [editingMarkdown, setEditingMarkdown] = useState<{
     id: string;
@@ -42,6 +45,29 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   } | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const searchParams = useSearchParams();
+
+  // Initialize search term from URL
+  useEffect(() => {
+    const query = searchParams.get('q');
+    if (query) {
+      setSearchTerm(query);
+    }
+  }, [searchParams]);
+
+  // Filter questions based on search term
+  const filteredQuestions = useMemo(() => {
+    if (!searchTerm.trim()) return questions;
+    
+    const term = searchTerm.toLowerCase().trim();
+    return questions.filter(question => 
+      question.title.toLowerCase().includes(term) || 
+      question.question.toLowerCase().includes(term) ||
+      question.tags.some(tag => tag.toLowerCase().includes(term)) ||
+      question.answers.some(answer => answer.text.toLowerCase().includes(term))
+    );
+  }, [questions, searchTerm]);
 
   const refreshDirectory = async () => {
     if (!fileSystem.handle) {
@@ -85,7 +111,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       setIsRefreshing(false);
     }
   };
-  
   
   const handleDelete = async (id: string) => {
     if (!fileSystem.handle) return;
@@ -239,7 +264,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       );
     }
   };
-  
 
   const toggleSelect = (id: string) => {
     setSelectedQuestions(prev => 
@@ -250,15 +274,38 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   };
 
   const toggleSelectAll = () => {
-    setSelectedQuestions(prev =>
-      prev.length === questions.length ? [] : questions.map(q => q.id)
-    );
+    if (selectedQuestions.length === filteredQuestions.length) {
+      setSelectedQuestions([]);
+    } else {
+      setSelectedQuestions(filteredQuestions.map(q => q.id));
+    }
+  };
+
+  // Handle search 
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+  };
+
+  // Handle question selection from search results
+  const handleQuestionSelect = (questionId: string) => {
+    // Find and expand the selected question
+    setQuestions(questions.map(q =>
+      q.id === questionId ? { ...q, isExpanded: true } : q
+    ));
+    
+    // Scroll to the selected question
+    setTimeout(() => {
+      const element = document.getElementById(`question-${questionId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-      <div className="w-full sm:w-auto flex items-center gap-2">
+        <div className="w-full sm:w-auto flex items-center gap-2">
           {fileSystem.handle && (
             <>
               <span className="text-gray-600 text-sm break-all">
@@ -295,150 +342,170 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         <p className="text-center text-gray-500 italic p-4">No questions created yet. Create New Question to get started.</p>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="relative w-full flex items-center justify-between gap-4">
             <button
               onClick={toggleSelectAll}
-              className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center gap-2"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-2"
             >
-              {selectedQuestions.length === questions.length ? (
+              {selectedQuestions.length === filteredQuestions.length && filteredQuestions.length > 0 ? (
                 <Square className="w-4 h-4" />
               ) : (
                 <CheckSquare className="w-4 h-4" />
               )}
-              {selectedQuestions.length === questions.length ? 'Deselect All' : 'Select All'}
+              {selectedQuestions.length === filteredQuestions.length && filteredQuestions.length > 0
+                ? 'Deselect All'
+                : 'Select All'}
             </button>
-          </div>
-          {questions.map((question) => (
-            <div
-              key={question.id}
-              className={`border rounded-lg p-3 sm:p-4 bg-white shadow-sm hover:shadow-md transition-shadow ${
-                selectedQuestions.includes(String(question.id)) ? 'border-blue-500' : ''
-              }`}
-            >
-              {editingMarkdown?.id === question.id ? (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold break-all">Editing: {question.title}</h3>
-                  <textarea
-                    value={editingMarkdown.content}
-                    onChange={(e) => setEditingMarkdown({
-                      ...editingMarkdown,
-                      content: e.target.value
-                    })}
-                    className="w-full h-64 p-4 font-mono text-sm bg-gray-50 rounded border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <div className="flex flex-col sm:flex-row justify-end gap-2">
-                    <button
-                      onClick={() => setEditingMarkdown(null)}
-                      className="w-full sm:w-auto px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveMarkdownChanges}
-                      className="w-full sm:w-auto px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-4">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleSelect(String(question.id));
-                    }}
-                    className="mt-1 text-gray-500 hover:text-blue-500 transition-colors flex-shrink-0"
-                  >
-                    {selectedQuestions.includes(String(question.id)) ? (
-                      <CheckSquare className="w-5 h-5" />
-                    ) : (
-                      <Square className="w-5 h-5" />
-                    )}
-                  </button>
-                  <div className="flex-grow min-w-0">
-                    <div
-                      className="cursor-pointer"
-                      onClick={() => toggleExpand(String(question.id))}
-                    >
-                      <div className="flex flex-col space-y-2">
-                        <h3 className="text-lg font-semibold break-all">{question.title}</h3>
-                        <div className="text-sm text-gray-600">
-                          Difficulty: {question.difficulty}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {question.tags.map((tag, index) => (
-                            <span
-                              key={`tag-${question.id}-${index}`}
-                              className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex flex-col sm:flex-row justify-end gap-2 mt-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEdit(question);
-                            }}
-                            className="w-full sm:w-auto px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditMarkdown(question);
-                            }}
-                            className="w-full sm:w-auto px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
-                          >
-                            Edit as MD
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(String(question.id));
-                            }}
-                            className="w-full sm:w-auto px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
 
-                    {question.isExpanded && (
-                      <div className="mt-4 space-y-2 border-t pt-4">
-                        <div className="space-y-4">
-                          <div>
-                            <p className="font-medium">Question:</p>
-                            <p className="ml-2 sm:ml-4 mt-1 whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-3 sm:p-4 rounded max-w-full overflow-x-auto">
-                              {question.question}
-                            </p>
+            <div className="flex-1">
+              <QuestionSearch 
+                onSearch={handleSearch} 
+                placeholder="Search by title, question, tags..." 
+                questions={questions}
+                onQuestionSelect={handleQuestionSelect}
+              />
+            </div>
+          </div>
+
+          
+          {filteredQuestions.length === 0 ? (
+            <p className="text-center text-gray-500 italic p-4">
+              No questions match your search. Try different keywords or clear the search.
+            </p>
+          ) : (
+            filteredQuestions.map((question) => (
+              <div
+                key={question.id}
+                id={`question-${question.id}`}
+                className={`border rounded-lg p-3 sm:p-4 bg-white shadow-sm hover:shadow-md transition-shadow ${
+                  selectedQuestions.includes(String(question.id)) ? 'border-blue-500' : ''
+                }`}
+              >
+                {editingMarkdown?.id === question.id ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold break-all">Editing: {question.title}</h3>
+                    <textarea
+                      value={editingMarkdown.content}
+                      onChange={(e) => setEditingMarkdown({
+                        ...editingMarkdown,
+                        content: e.target.value
+                      })}
+                      className="w-full h-64 p-4 font-mono text-sm bg-gray-50 rounded border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <div className="flex flex-col sm:flex-row justify-end gap-2">
+                      <button
+                        onClick={() => setEditingMarkdown(null)}
+                        className="w-full sm:w-auto px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={saveMarkdownChanges}
+                        className="w-full sm:w-auto px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-4">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelect(String(question.id));
+                      }}
+                      className="mt-1 text-gray-500 hover:text-blue-500 transition-colors flex-shrink-0"
+                    >
+                      {selectedQuestions.includes(String(question.id)) ? (
+                        <CheckSquare className="w-5 h-5" />
+                      ) : (
+                        <Square className="w-5 h-5" />
+                      )}
+                    </button>
+                    <div className="flex-grow min-w-0">
+                      <div
+                        className="cursor-pointer"
+                        onClick={() => toggleExpand(String(question.id))}
+                      >
+                        <div className="flex flex-col space-y-2">
+                          <h3 className="text-lg font-semibold break-all">{question.title}</h3>
+                          <div className="text-sm text-gray-600">
+                            Difficulty: {question.difficulty}
                           </div>
-                          <div>
-                            <p className="font-medium">Answers:</p>
-                            <ul className="ml-4 sm:ml-8 list-disc space-y-1 mt-1">
-                              {question.answers.map((answer, index) => (
-                                <li 
-                                  key={`answer-${question.id}-${index}`}
-                                  className={`${answer.isCorrect ? 'text-green-600 font-medium' : ''} break-words`}
-                                >
-                                  {answer.text}
-                                  {answer.isCorrect && ' (Correct)'}
-                                </li>
-                              ))}
-                            </ul>
+                          <div className="flex flex-wrap gap-2">
+                            {question.tags.map((tag, index) => (
+                              <span
+                                key={`tag-${question.id}-${index}`}
+                                className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(question);
+                              }}
+                              className="w-full sm:w-auto px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditMarkdown(question);
+                              }}
+                              className="w-full sm:w-auto px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                            >
+                              Edit as MD
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(String(question.id));
+                              }}
+                              className="w-full sm:w-auto px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
                       </div>
-                    )}
+
+                      {question.isExpanded && (
+                        <div className="mt-4 space-y-2 border-t pt-4">
+                          <div className="space-y-4">
+                            <div>
+                              <p className="font-medium">Question:</p>
+                              <p className="ml-2 sm:ml-4 mt-1 whitespace-pre-wrap break-words font-mono text-sm bg-gray-50 p-3 sm:p-4 rounded max-w-full overflow-x-auto">
+                                {question.question}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Answers:</p>
+                              <ul className="ml-4 sm:ml-8 list-disc space-y-1 mt-1">
+                                {question.answers.map((answer, index) => (
+                                  <li 
+                                    key={`answer-${question.id}-${index}`}
+                                    className={`${answer.isCorrect ? 'text-green-600 font-medium' : ''} break-words`}
+                                  >
+                                    {answer.text}
+                                    {answer.isCorrect && ' (Correct)'}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
