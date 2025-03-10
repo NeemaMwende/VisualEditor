@@ -142,7 +142,7 @@ const findCodeBlocks = (text: string): {
     text: string,
     enableFormatting: boolean,
     language: 'javascript' | 'html'
-  ): string => {
+   ): string => {
     if (!text) return '';
     if (!enableFormatting) return cleanupCodeBlocks(text, language);
   
@@ -191,7 +191,7 @@ export const updateMarkdownCodeBlocks = (
     enableCodeFormatting: boolean;
     defaultLanguage: 'javascript' | 'html';
   }
-): string => {
+  ): string => {
   if (!formattingOptions.enableCodeFormatting) {
     return markdown.replace(/```(javascript|html)?\n([\s\S]*?)\n```/g, '$2');
   }
@@ -207,7 +207,7 @@ const processMarkdownBlock = (
   text: string,
   defaultLanguage: 'javascript' | 'html',
   enableFormatting: boolean
-): string => {
+  ): string => {
   if (!enableFormatting) return text;
 
   const lines = text.split('\n');
@@ -293,8 +293,8 @@ const cleanupCodeBlocks = (text: string, language: 'javascript' | 'html'): strin
 export const generateMarkdown = (
   question: BaseQuestion,
   enableFormatting: boolean = true,
-  defaultLanguage: 'javascript' | 'html' = 'javascript'
-): string => {
+  defaultLanguage: 'javascript' | 'html' = 'javascript' 
+  ): string => {
   if (!question || typeof question !== 'object') return '';
 
   try {
@@ -342,7 +342,7 @@ export const parseMarkdownContent = (
   markdownContent: string;
   codeLanguage: 'javascript' | 'html';
   enableCodeFormatting?: boolean;
-} => {
+  } => {
   if (!content || typeof content !== 'string') {
     return {
       title: '',
@@ -366,6 +366,9 @@ export const parseMarkdownContent = (
     let currentContent = '';
     let isInCodeBlock = false;
     let codeBlockContent = '';
+    // Track if we've detected a language in the content
+    let detectedLanguage: 'javascript' | 'html' | null = null;
+    let codeBlockLanguage = '';
 
     const lines = content.split('\n');
     let inFrontMatter = false;
@@ -394,10 +397,26 @@ export const parseMarkdownContent = (
         if (!isInCodeBlock) {
           isInCodeBlock = true;
           codeBlockContent = '';
+          
+          // Extract language if specified after backticks
+          const languageMatch = trimmedLine.match(/^```(javascript|js|html)/i);
+          if (languageMatch) {
+            codeBlockLanguage = languageMatch[1].toLowerCase();
+            // Normalize language names
+            if (codeBlockLanguage === 'js') codeBlockLanguage = 'javascript';
+            
+            // Set detected language if we haven't already found one
+            if (!detectedLanguage && (codeBlockLanguage === 'javascript' || codeBlockLanguage === 'html')) {
+              detectedLanguage = codeBlockLanguage as 'javascript' | 'html';
+            }
+          }
         } else {
           isInCodeBlock = false;
-          currentContent += `\n\`\`\`${formattingOptions.defaultLanguage}\n${codeBlockContent.trim()}\n\`\`\`\n`;
+          // Use detected language or fall back to the one provided in options
+          const languageToUse = codeBlockLanguage || formattingOptions.defaultLanguage;
+          currentContent += `\n\`\`\`${languageToUse}\n${codeBlockContent.trim()}\n\`\`\`\n`;
           codeBlockContent = '';
+          codeBlockLanguage = '';
         }
         continue;
       }
@@ -449,11 +468,14 @@ export const parseMarkdownContent = (
     }
     answers = answers.slice(0, 4);
 
+    // Use the language we detected in the content, or fall back to the provided default
+    const languageToUse = detectedLanguage || formattingOptions.defaultLanguage;
+    
     // Clean up any duplicate code block markers
-    question = cleanupCodeBlocks(question, formattingOptions.defaultLanguage);
+    question = cleanupCodeBlocks(question, languageToUse);
     answers = answers.map(answer => ({
       ...answer,
-      text: cleanupCodeBlocks(answer.text, formattingOptions.defaultLanguage),
+      text: cleanupCodeBlocks(answer.text, languageToUse),
     }));
 
     return {
@@ -463,7 +485,7 @@ export const parseMarkdownContent = (
       difficulty,
       tags,
       markdownContent: content,
-      codeLanguage: formattingOptions.defaultLanguage,
+      codeLanguage: languageToUse,
       enableCodeFormatting: formattingOptions.enableCodeFormatting,
     };
   } catch (error) {
@@ -482,7 +504,6 @@ export const parseMarkdownContent = (
     };
   }
 };
-
 export const saveMarkdownToLocalStorage = (files: MarkdownFile[]): void => {
   try {
     localStorage.setItem('markdownFiles', JSON.stringify(files));

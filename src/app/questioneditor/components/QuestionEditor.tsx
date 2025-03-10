@@ -318,28 +318,27 @@ const handleFormatToggle = (enableFormatting: boolean) => {
     }
   };
 
-const handleLanguageChange = (newLanguage: 'javascript' | 'html') => {
-  setFormattingOptions((prev) => ({
+  const handleLanguageChange = (newLanguage: 'javascript' | 'html') => {
+    setFormattingOptions(prev => ({
     ...prev,
-    defaultLanguage: newLanguage,
-  }));
+    defaultLanguage: newLanguage
+    }));
 
-  if (formattingOptions.enableCodeFormatting) {
+    if (formattingOptions.enableCodeFormatting) {
     const updateCodeBlockLanguage = (content: string) => {
       return content.replace(
-        /```(?:javascript|html|)(\s*[\r\n]+)([\s\S]*?)(\s*)```/g,
-        (match, lineBreak, code, endBreak) => {
+        /```(?:javascript|html|)([^\n]*)\n([\s\S]*?)\n```/g,
+        (match, _, code) => {
           const trimmedCode = code.trim();
-          return `\`\`\`${newLanguage}${lineBreak}${trimmedCode}${endBreak}\`\`\``;
+          return `\`\`\`${newLanguage}\n${trimmedCode}\n\`\`\``;
         }
       );
     };
 
-    // Update question and answers with new language
     const updatedQuestion = updateCodeBlockLanguage(question);
-    const updatedAnswers = answers.map((answer) => ({
+    const updatedAnswers = answers.map(answer => ({
       ...answer,
-      text: updateCodeBlockLanguage(answer.text),
+      text: updateCodeBlockLanguage(answer.text)
     }));
 
     setQuestion(updatedQuestion);
