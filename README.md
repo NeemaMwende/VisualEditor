@@ -2,7 +2,7 @@
 git clone https://github.com/yourusername/visualeditor.git
 
 ## Navigate to the project folder
-cd pdf-question-search
+cd visualeditor
 
 ## Install dependencies
 npm install
