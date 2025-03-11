@@ -68,6 +68,48 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     );
   }, [questions, searchTerm]);
 
+
+  const verifyPermission = async (handle: FileSystemDirectoryHandle): Promise<boolean> => {
+    try {
+      const options = { mode: 'readwrite' } as const;
+  
+      // Directly request permission without checking first
+      return (await handle.requestPermission(options)) === 'granted';
+    } catch (error) {
+      console.error('Error verifying permission:', error);
+      return false;
+    }
+  };
+  
+
+  // get all files in the directory
+  const getDirectoryFiles = async (): Promise<Map<string, FileSystemFileHandle>> => {
+    if (!fileSystem.handle) return new Map();
+    
+    const existingFiles = new Map<string, FileSystemFileHandle>();
+    try {
+      for await (const entry of fileSystem.handle.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+          existingFiles.set(entry.name.toLowerCase(), entry as FileSystemFileHandle);
+        }
+      }
+    } catch (error) {
+      console.error('Error reading directory files:', error);
+    }
+    return existingFiles;
+  };
+
+  const getFilenameFromQuestion = (question: DashboardQuestion): string[] => {
+    return [
+
+      `${question.title.toLowerCase().replace(/\s+/g, '-')}.md`,
+      `${question.id}.md`,
+      question.id,
+      `${question.title.replace(/\s+/g, '-')}.md`,
+      `${question.id.toLowerCase()}.md`
+    ];
+  };
+
   const refreshDirectory = async () => {
     if (!fileSystem.handle) {
       return;
@@ -75,6 +117,11 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   
     setIsRefreshing(true);
     try {
+      const hasPermission = await verifyPermission(fileSystem.handle);
+      if (!hasPermission) {
+        throw new Error('Permission denied for directory access');
+      }
+
       const loadedQuestions: DashboardQuestion[] = [];
       for await (const entry of fileSystem.handle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
@@ -86,7 +133,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
               if (parsedData) {
                 loadedQuestions.push({
                   ...parsedData,
-                  id: entry.name.replace('.md', ''),
+                  id: entry.name, 
                   markdownContent: content,
                   type: 'question',
                   isExpanded: false,
@@ -114,22 +161,71 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
     try {
       const questionToDelete = questions.find(q => q.id === id);
-      if (questionToDelete) {
-        const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-        await fileSystem.handle.removeEntry(filename);
-        
-        setQuestions(prevQuestions => 
-          prevQuestions.filter(q => q.id !== id)
-        );
-        setSelectedQuestions(prev => prev.filter(qId => qId !== id));
+      if (!questionToDelete) return;
+      
+      const hasPermission = await verifyPermission(fileSystem.handle);
+      if (!hasPermission) {
+        throw new Error('Permission denied for directory access');
       }
+
+      const existingFiles = await getDirectoryFiles();
+      const possibleFilenames = getFilenameFromQuestion(questionToDelete);
+      
+      let fileDeleted = false;
+      for (const filename of possibleFilenames) {
+        // First check if the exact name exists
+        if (existingFiles.has(filename.toLowerCase())) {
+          const exactFile = existingFiles.get(filename.toLowerCase());
+          if (exactFile) {
+            try {
+            
+              const actualFilename = exactFile.name;
+              await fileSystem.handle.removeEntry(actualFilename);
+              fileDeleted = true;
+              console.log(`Successfully deleted file: ${actualFilename}`);
+              break;
+            } catch (removeError) {
+              console.warn(`Failed to delete ${filename}:`, removeError);
+            }
+          }
+        }
+      }
+      
+      // If none of the generated filenames matched, try to find the file by checking content
+      if (!fileDeleted && questionToDelete.markdownContent) {
+        const fileContent = questionToDelete.markdownContent;
+        for (const [_, fileHandle] of existingFiles) {
+          try {
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            
+            if (content === fileContent) {
+             
+              await fileSystem.handle.removeEntry(fileHandle.name);
+              fileDeleted = true;
+              console.log(`Successfully deleted file by content match: ${fileHandle.name}`);
+              break;
+            }
+          } catch (readError) {
+            console.warn('Error reading file for content comparison:', readError);
+          }
+        }
+      }
+      
+      if (!fileDeleted) {
+        console.warn('Could not find exact file to delete. Updating UI only.');
+      }
+
+      // Update the UI state
+      setQuestions(prevQuestions => prevQuestions.filter(q => q.id !== id));
+      setSelectedQuestions(prev => prev.filter(qId => qId !== id));
+      
     } catch (error) {
-      console.error('Error deleting file:', error);
-      if ((error as Error).name === 'NotFoundError') {
-        setQuestions(prevQuestions => 
-          prevQuestions.filter(q => q.id !== id)
-        );
-      }
+      console.error('Error in delete operation:', error);
+      
+      // Still update the UI state to maintain user experience
+      setQuestions(prevQuestions => prevQuestions.filter(q => q.id !== id));
+      setSelectedQuestions(prev => prev.filter(qId => qId !== id));
     }
   };
 
@@ -138,20 +234,69 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       return;
     }
     
+    // Verify permission first
+    const hasPermission = await verifyPermission(fileSystem.handle);
+    if (!hasPermission) {
+      console.error('Permission denied for directory access');
+      return;
+    }
+    
+    // Get all files in the directory for matching
+    const existingFiles = await getDirectoryFiles();
+    
+    const successfullyDeletedIds: string[] = [];
+    
     for (const id of selectedQuestions) {
       const questionToDelete = questions.find(q => q.id === id);
       if (questionToDelete) {
-        const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-        try {
-          await fileSystem.handle.removeEntry(filename);
-        } catch (error) {
-          if ((error as Error).name !== 'NotFoundError') {
-            console.error(`Error deleting file ${filename}:`, error);
+        const possibleFilenames = getFilenameFromQuestion(questionToDelete);
+        
+        let deleted = false;
+        // Try all possible filenames
+        for (const filename of possibleFilenames) {
+          const fileHandle = existingFiles.get(filename.toLowerCase());
+          if (fileHandle) {
+            try {
+              await fileSystem.handle.removeEntry(fileHandle.name);
+              deleted = true;
+              successfullyDeletedIds.push(id);
+              break;
+            } catch (error) {
+              console.warn(`Failed to delete ${fileHandle.name}:`, error);
+            }
           }
+        }
+        
+        // If none of the generated filenames matched, try to find the file by checking content
+        if (!deleted && questionToDelete.markdownContent) {
+          const fileContent = questionToDelete.markdownContent;
+          for (const [_, fileHandle] of existingFiles) {
+            try {
+              const file = await fileHandle.getFile();
+              const content = await file.text();
+              
+              if (content === fileContent) {
+                // Found a matching file by content
+                await fileSystem.handle.removeEntry(fileHandle.name);
+                deleted = true;
+                successfullyDeletedIds.push(id);
+                break;
+              }
+            } catch (readError) {
+              console.warn('Error reading file for content comparison:', readError);
+            }
+          }
+        }
+        
+        if (!deleted) {
+          console.warn(`Could not find file for question: ${questionToDelete.title}`);
+          // Add to successfully deleted anyway to update UI
+          successfullyDeletedIds.push(id);
         }
       }
     }
 
+    // Update UI state for all selected IDs
     setQuestions(prevQuestions => 
       prevQuestions.filter(q => !selectedQuestions.includes(q.id))
     );
@@ -187,6 +332,12 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     }
   
     try {
+      // Verify permission first
+      const hasPermission = await verifyPermission(fileSystem.handle);
+      if (!hasPermission) {
+        throw new Error('Permission denied for directory access');
+      }
+      
       const originalQuestion = questions.find((q) => q.id === editingMarkdown.id);
       // Parse the content and detect the language used
       const parsedData = parseMarkdownContent(editingMarkdown.content, {
@@ -201,13 +352,36 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       const updatedTitle = parsedData.title || editingMarkdown.originalTitle;
       const newFilename = `${updatedTitle.toLowerCase().replace(/\s+/g, "-")}.md`;
   
+      // Get existing files for handling file rename
+      const existingFiles = await getDirectoryFiles();
+  
       // Handle file rename if title changed
       if (newFilename !== editingMarkdown.filename) {
-        try {
-          await fileSystem.handle.removeEntry(editingMarkdown.filename);
-        } catch (error) {
-          if ((error as Error).name !== "NotFoundError") {
-            throw error;
+       
+        const originalFileHandle = existingFiles.get(editingMarkdown.filename.toLowerCase());
+        if (originalFileHandle) {
+          try {
+            await fileSystem.handle.removeEntry(originalFileHandle.name);
+          } catch (error) {
+            console.warn(`Failed to delete old file ${originalFileHandle.name}:`, error);
+          
+          }
+        } else {
+         
+          const originalQuestion = questions.find(q => q.id === editingMarkdown.id);
+          if (originalQuestion) {
+            const possibleFilenames = getFilenameFromQuestion(originalQuestion);
+            for (const filename of possibleFilenames) {
+              const fileHandle = existingFiles.get(filename.toLowerCase());
+              if (fileHandle) {
+                try {
+                  await fileSystem.handle.removeEntry(fileHandle.name);
+                  break;
+                } catch (error) {
+                  console.warn(`Failed to delete old file ${fileHandle.name}:`, error);
+                }
+              }
+            }
           }
         }
       }
@@ -226,6 +400,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
           q.id === editingMarkdown.id
             ? {
                 ...q,
+                id: newFilename, 
                 title: updatedTitle,
                 question: parsedData.question,
                 answers: parsedData.answers.map((answer) => ({
@@ -270,9 +445,9 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     setSearchTerm(term);
   };
 
-  // Handle question selection from search results
+ 
   const handleQuestionSelect = (questionId: string) => {
-    // Find and expand the selected question
+
     setQuestions(questions.map(q =>
       q.id === questionId ? { ...q, isExpanded: true } : q
     ));
