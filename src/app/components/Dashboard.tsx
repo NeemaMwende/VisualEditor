@@ -80,7 +80,7 @@ const DashboardHeader = ({
         disabled={isLoading}
       >
         <Folder className="w-4 h-4" />
-        <span className="whitespace-nowrap">{isLoading ? 'Loading...' : 'Import Questions'}</span>
+        <span className="whitespace-nowrap">Import Questions</span>
       </button>
       <button
         onClick={onNewQuestion}
@@ -180,21 +180,14 @@ const Dashboard = () => {
     }
 };
 
-  // Fixed useCallback hook by adding loadDirectory as a dependency
   const handleFileSystemError = useCallback(async (error: Error) => {
     console.error("File system error:", error);
   
     if (error.name === "InvalidStateError") {
       setFileSystem({ handle: null, path: "" });
-  
-      // Automatically prompt the user to reload the directory
-      if (window.confirm("File system access has expired. Would you like to reload the directory?")) {
-        await loadDirectory();
-      }
-    } else {
-      alert(`File system error: ${error.message}`);
+      await loadDirectory();
     }
-  }, [loadDirectory]); // Added loadDirectory as a dependency
+  }, []);
  
   const saveQuestionToFile = useCallback(async (question: DashboardQuestion) => {
     if (!fileSystem.handle) return;
@@ -218,7 +211,6 @@ const Dashboard = () => {
     }
   }, [fileSystem.handle, handleFileSystemError]);
 
-  // Fixed useCallback hook by adding loadDirectory as a dependency
   const retryOperation = useCallback(async <T,>(
     operation: () => Promise<T>,
     maxRetries: number = 3
@@ -243,7 +235,7 @@ const Dashboard = () => {
     }
   
     throw lastError;
-  }, [loadDirectory]); // Added loadDirectory as a dependency
+  }, [loadDirectory]);
   
   useEffect(() => {
     if (fileSystem.handle && questions.length > 0) {
@@ -352,7 +344,6 @@ const Dashboard = () => {
       setCurrentlyEditing(null);
     } catch (error) {
       console.error("Error saving question:", error);
-      alert("Failed to save question. Please try again.");
     }
   };
    
@@ -371,7 +362,6 @@ const Dashboard = () => {
 
   const handleNewQuestion = () => {
     if (!fileSystem.handle) {
-      alert('Please select a directory first');
       return;
     }
     setCurrentlyEditing(null);

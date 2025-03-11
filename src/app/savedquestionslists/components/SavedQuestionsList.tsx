@@ -70,7 +70,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
 
   const refreshDirectory = async () => {
     if (!fileSystem.handle) {
-      alert('Please select a directory first');
       return;
     }
   
@@ -105,7 +104,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       setSelectedQuestions([]); // Clear selections after refresh
     } catch (error) {
       console.error('Error refreshing directory:', error);
-      alert('Failed to refresh directory. Please check permissions and try again.');
     } finally {
       setIsRefreshing(false);
     }
@@ -114,57 +112,50 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   const handleDelete = async (id: string) => {
     if (!fileSystem.handle) return;
 
-    if (window.confirm('Are you sure you want to delete this question? This will remove the file from your local directory.')) {
-      try {
-        const questionToDelete = questions.find(q => q.id === id);
-        if (questionToDelete) {
-          const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-          await fileSystem.handle.removeEntry(filename);
-          
-          setQuestions(prevQuestions => 
-            prevQuestions.filter(q => q.id !== id)
-          );
-          setSelectedQuestions(prev => prev.filter(qId => qId !== id));
-        }
-      } catch (error) {
-        console.error('Error deleting file:', error);
-        if ((error as Error).name === 'NotFoundError') {
-          setQuestions(prevQuestions => 
-            prevQuestions.filter(q => q.id !== id)
-          );
-        } else {
-          alert('Failed to delete file. Please check permissions and try again.');
-        }
+    try {
+      const questionToDelete = questions.find(q => q.id === id);
+      if (questionToDelete) {
+        const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+        await fileSystem.handle.removeEntry(filename);
+        
+        setQuestions(prevQuestions => 
+          prevQuestions.filter(q => q.id !== id)
+        );
+        setSelectedQuestions(prev => prev.filter(qId => qId !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      if ((error as Error).name === 'NotFoundError') {
+        setQuestions(prevQuestions => 
+          prevQuestions.filter(q => q.id !== id)
+        );
       }
     }
   };
 
   const handleDeleteSelected = async () => {
     if (!fileSystem.handle || selectedQuestions.length === 0) {
-      alert(fileSystem.handle ? 'Please select questions to delete' : 'Please select a directory first');
       return;
     }
     
-    if (window.confirm(`Are you sure you want to delete ${selectedQuestions.length} selected question(s)?`)) {
-      for (const id of selectedQuestions) {
-        const questionToDelete = questions.find(q => q.id === id);
-        if (questionToDelete) {
-          const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
-          try {
-            await fileSystem.handle.removeEntry(filename);
-          } catch (error) {
-            if ((error as Error).name !== 'NotFoundError') {
-              console.error(`Error deleting file ${filename}:`, error);
-            }
+    for (const id of selectedQuestions) {
+      const questionToDelete = questions.find(q => q.id === id);
+      if (questionToDelete) {
+        const filename = `${questionToDelete.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+        try {
+          await fileSystem.handle.removeEntry(filename);
+        } catch (error) {
+          if ((error as Error).name !== 'NotFoundError') {
+            console.error(`Error deleting file ${filename}:`, error);
           }
         }
       }
-
-      setQuestions(prevQuestions => 
-        prevQuestions.filter(q => !selectedQuestions.includes(q.id))
-      );
-      setSelectedQuestions([]);
     }
+
+    setQuestions(prevQuestions => 
+      prevQuestions.filter(q => !selectedQuestions.includes(q.id))
+    );
+    setSelectedQuestions([]);
   };
 
   const toggleExpand = (id: string) => {
@@ -192,7 +183,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
   
   const saveMarkdownChanges = async () => {
     if (!fileSystem.handle || !editingMarkdown) {
-      alert(fileSystem.handle ? "No changes to save" : "Please select a directory first");
       return;
     }
   
@@ -256,11 +246,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       setEditingMarkdown(null);
     } catch (error) {
       console.error("Error saving markdown changes:", error);
-      alert(
-        "Error saving changes: " +
-          ((error as Error).message ||
-            "Please check the markdown format and try again.")
-      );
     }
   };
 

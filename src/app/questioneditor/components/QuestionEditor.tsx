@@ -307,6 +307,7 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       }));
     }
   };
+
   const handleLanguageChange = (newLanguage: 'javascript' | 'html') => {
     setFormattingOptions(prev => ({
       ...prev,
@@ -366,7 +367,7 @@ const handleFormatToggle = (enableFormatting: boolean) => {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      alert("Please provide a title");
+      // Removed alert about providing a title
       return;
     }
   
@@ -430,18 +431,14 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       localStorage.setItem("questions", JSON.stringify(updatedQuestions));
   
       onSave(savedData);
-      alert("Saved successfully!");
+      // Removed success alert
     } catch (error) {
       console.error("Error saving:", error);
-      alert("Failed to save. Please try again.");
+      // Removed error alert
     }
   };
   
   const handleBack = () => {
-    if (question.trim() || answers.some(a => a.text.trim())) {
-      const confirm = window.confirm('You have unsaved changes. Are you sure you want to go back?');
-      if (!confirm) return;
-    }
     onBack();
   };
 
@@ -502,7 +499,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
                 markdown={markdownContent}
                 onMarkdownChange={handleMarkdownUpdate}
                 isFullScreen={false}
-    
               />
             </div>
           </>
