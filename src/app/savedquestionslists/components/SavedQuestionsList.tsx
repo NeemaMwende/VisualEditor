@@ -194,7 +194,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
       // If none of the generated filenames matched, try to find the file by checking content
       if (!fileDeleted && questionToDelete.markdownContent) {
         const fileContent = questionToDelete.markdownContent;
-        for (const [_, fileHandle] of existingFiles) {
+        for (const fileHandle of existingFiles.values()) {
           try {
             const file = await fileHandle.getFile();
             const content = await file.text();
@@ -270,7 +270,7 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         // If none of the generated filenames matched, try to find the file by checking content
         if (!deleted && questionToDelete.markdownContent) {
           const fileContent = questionToDelete.markdownContent;
-          for (const [_, fileHandle] of existingFiles) {
+          for (const fileHandle of existingFiles.values()) {
             try {
               const file = await fileHandle.getFile();
               const content = await file.text();
