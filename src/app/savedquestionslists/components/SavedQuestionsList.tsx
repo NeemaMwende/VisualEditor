@@ -73,8 +73,14 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
     try {
       const options = { mode: 'readwrite' } as const;
   
-      // Directly request permission without checking first
-      return (await handle.requestPermission(options)) === 'granted';
+      // Check if requestPermission method exists and then call it
+      if (handle.requestPermission) {
+        return (await handle.requestPermission(options)) === 'granted';
+      }
+      
+      // If requestPermission doesn't exist, we'll assume permission is granted
+      // This handles potential browser compatibility issues
+      return true;
     } catch (error) {
       console.error('Error verifying permission:', error);
       return false;
