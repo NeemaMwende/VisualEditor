@@ -8,6 +8,8 @@ import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
 import TextSelectionFormatter from '@/app/components/TextSelectionFormatter';
 import MarkdownPreview from './MarkdownPreview';
+import TextEditor from './TextEditor';
+
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
@@ -159,7 +161,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         lastSyncedMarkdownRef.current = newMarkdown;
       }
     }
-  }, [question, answers, difficulty, tags, title, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage, isMarkdownSyncing]);
+  }, [question, answers, difficulty, tags, title, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage, isMarkdownSyncing, initialData]);
 
   const handleMarkdownUpdate = (newContent: string) => {
     if (newContent === lastSyncedMarkdownRef.current) return;
@@ -195,7 +197,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
   
-const handleFormatToggle = (enableFormatting: boolean) => {
+  const handleFormatToggle = (enableFormatting: boolean) => {
     setFormattingOptions(prev => ({
       ...prev,
       enableCodeFormatting: enableFormatting,
@@ -367,7 +369,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      // Removed alert about providing a title
       return;
     }
   
@@ -431,10 +432,8 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       localStorage.setItem("questions", JSON.stringify(updatedQuestions));
   
       onSave(savedData);
-      // Removed success alert
     } catch (error) {
       console.error("Error saving:", error);
-      // Removed error alert
     }
   };
   
@@ -568,16 +567,14 @@ const handleFormatToggle = (enableFormatting: boolean) => {
             />
 
             <div className="space-y-2">
-              <label className="block text-gray-700 text-sm font-bold">
-                Question
-              </label>
-              <textarea
+              <TextEditor 
+                label="Question"
                 value={question}
-                ref={questionRef}
-                onChange={(e) => handleQuestionChange(e.target.value)}
-                className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
+                onChange={handleQuestionChange}
                 placeholder="Enter your question here"
+                rows={3}
+                textareaRef={questionRef}
+                id="question-editor"
               />
             </div>
 
@@ -618,15 +615,15 @@ const handleFormatToggle = (enableFormatting: boolean) => {
                         Answer {String.fromCharCode(65 + index)}
                       </label>
                     </div>
-                    <textarea
-                      ref={(el) => {
+                    <TextEditor
+                      value={answer.text}
+                      onChange={(newText) => handleAnswerChange(index, newText)}
+                      placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
+                      rows={2}
+                      textareaRef={(el) => {
                         answerRefs.current[index] = el;
                       }}
-                      value={answer.text}
-                      onChange={(e) => handleAnswerChange(index, e.target.value)}
-                      className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={2}
-                      placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
+                      id={`answer-editor-${index}`}
                     />
                   </div>
                 ))}
