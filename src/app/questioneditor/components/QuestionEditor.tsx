@@ -254,6 +254,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     if (language !== formattingOptions.defaultLanguage) {
       handleLanguageChange(language);
     }
+    
   };
 
   const handleQuestionChange = (newQuestion: string) => {
@@ -540,7 +541,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 value={question}
                 onChange={handleQuestionChange}
                 placeholder="Enter your question here"
-                rows={3}
+                rows={5}
                 id="question-editor"
               />
             </div>
@@ -560,7 +561,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {answers.map((answer, index) => {
-                  
+                  // Set up refs for each answer editor
                   if (answerEditorRefs.current && answerEditorRefs.current.length <= index) {
                     answerEditorRefs.current.push(null);
                   }

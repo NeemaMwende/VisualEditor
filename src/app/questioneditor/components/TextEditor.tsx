@@ -19,7 +19,7 @@ const TextEditor: React.FC<TextEditorProps> = ({
   value, 
   onChange,
   label,
-  //placeholder,
+ // placeholder,
   rows = 3,
   id 
 }) => {
@@ -44,7 +44,7 @@ const TextEditor: React.FC<TextEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm focus:outline-none w-full',
+        class: 'prose prose-sm focus:outline-none w-full overflow-visible',
         spellcheck: 'false',
       }
     }
@@ -64,13 +64,19 @@ const TextEditor: React.FC<TextEditorProps> = ({
           {label}
         </label>
       )}
-      <div className="border rounded-md" id={id} ref={editorRef}>
+      <div className="border rounded-md flex flex-col" id={id} ref={editorRef}>
         <FormatToolbar editor={editor} />
         <div 
-          className="p-3 bg-white editor-content" 
-          style={{ minHeight: `${rows * 24}px` }}
+          className="p-3 bg-white editor-content overflow-y-auto" 
+          style={{ 
+            height: `${rows * 24}px`, 
+            maxHeight: `${rows * 24}px`
+          }}
         >
-          <EditorContent editor={editor} />
+          <EditorContent 
+            editor={editor} 
+            className="h-full"
+          />
         </div>
       </div>
     </div>
