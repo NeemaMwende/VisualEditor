@@ -561,7 +561,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {answers.map((answer, index) => {
-                  // Set up refs for each answer editor
+          
                   if (answerEditorRefs.current && answerEditorRefs.current.length <= index) {
                     answerEditorRefs.current.push(null);
                   }
@@ -601,7 +601,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         value={answer.text}
                         onChange={(newText) => handleAnswerChange(index, newText)}
                         placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
-                        rows={2}
+                        rows={5}
                         id={`answer-editor-${index}`}
                       />
                     </div>

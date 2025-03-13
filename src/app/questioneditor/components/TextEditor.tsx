@@ -19,7 +19,7 @@ const TextEditor: React.FC<TextEditorProps> = ({
   value, 
   onChange,
   label,
- // placeholder,
+  placeholder,
   rows = 3,
   id 
 }) => {
@@ -46,6 +46,7 @@ const TextEditor: React.FC<TextEditorProps> = ({
       attributes: {
         class: 'prose prose-sm focus:outline-none w-full overflow-visible',
         spellcheck: 'false',
+        placeholder: placeholder,
       }
     }
   });
@@ -67,16 +68,20 @@ const TextEditor: React.FC<TextEditorProps> = ({
       <div className="border rounded-md flex flex-col" id={id} ref={editorRef}>
         <FormatToolbar editor={editor} />
         <div 
-          className="p-3 bg-white editor-content overflow-y-auto" 
+          className="p-3 bg-white editor-content overflow-y-auto relative" 
           style={{ 
             height: `${rows * 24}px`, 
             maxHeight: `${rows * 24}px`
           }}
+          data-placeholder={placeholder}
         >
           <EditorContent 
             editor={editor} 
             className="h-full"
           />
+          {editor && !editor.getText().length && placeholder && (
+            <div className="absolute top-3 left-3 text-gray-400 pointer-events-none">{placeholder}</div>
+          )}
         </div>
       </div>
     </div>
