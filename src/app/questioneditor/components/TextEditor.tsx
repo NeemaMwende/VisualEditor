@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, RefObject } from "react";
+import React, { useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -12,7 +12,6 @@ interface TextEditorProps {
   label?: string;
   placeholder?: string;
   rows?: number;
-  textareaRef?: RefObject<HTMLTextAreaElement> | ((el: HTMLTextAreaElement | null) => void);
   id?: string;
 }
 
@@ -20,11 +19,12 @@ const TextEditor: React.FC<TextEditorProps> = ({
   value, 
   onChange,
   label,
-  placeholder,
+  //placeholder,
   rows = 3,
   id 
 }) => {
- 
+  const editorRef = useRef<HTMLDivElement>(null);
+  
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -39,20 +39,20 @@ const TextEditor: React.FC<TextEditorProps> = ({
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      onChange(editor.getText());
+      const newValue = editor.getText();
+      onChange(newValue);
     },
     editorProps: {
       attributes: {
-        ...(id ? { id } : {}), 
-        ...(placeholder ? { placeholder } : {}),
-        style: rows ? `min-height: ${rows * 24}px` : "" 
+        class: 'prose prose-sm focus:outline-none w-full',
+        spellcheck: 'false',
       }
     }
   });
 
   // Update editor content when value changes externally
   useEffect(() => {
-    if (editor && editor.getText() !== value) {
+    if (editor && value !== editor.getText()) {
       editor.commands.setContent(value);
     }
   }, [value, editor]);
@@ -64,12 +64,14 @@ const TextEditor: React.FC<TextEditorProps> = ({
           {label}
         </label>
       )}
-      <div className="border rounded-md">
+      <div className="border rounded-md" id={id} ref={editorRef}>
         <FormatToolbar editor={editor} />
-        <div className="p-3 bg-white" style={{ minHeight: `${rows * 24}px` }}>
+        <div 
+          className="p-3 bg-white editor-content" 
+          style={{ minHeight: `${rows * 24}px` }}
+        >
           <EditorContent editor={editor} />
         </div>
-
       </div>
     </div>
   );

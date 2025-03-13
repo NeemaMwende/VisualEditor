@@ -1,4 +1,3 @@
-"use client"
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ArrowLeft, Shuffle, Settings } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent, synchronizeMarkdownFormatting } from '../../../utils/markdownUtils';
@@ -6,7 +5,7 @@ import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
-import TextSelectionFormatter from './TextSelectionFormatter';
+import TextSelectionFormatter from '../../components/TextSelectionFormatter';
 import MarkdownPreview from './MarkdownPreview';
 import TextEditor from './TextEditor';
 
@@ -54,31 +53,32 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   fileSystem,
 }) => {
   const [question, setQuestion] = useState('');
-const [answers, setAnswers] = useState<Answer[]>([
-  { id: '1', text: '', isCorrect: false },
-  { id: '2', text: '', isCorrect: false },
-  { id: '3', text: '', isCorrect: false },
-  { id: '4', text: '', isCorrect: false }
-]);
-const [difficulty, setDifficulty] = useState(1);
-const [tags, setTags] = useState<string[]>([]);
-const [showMarkdown, setShowMarkdown] = useState(false);
-const [markdownContent, setMarkdownContent] = useState('');
-const [title, setTitle] = useState(initialData?.title || '');
-const [formattingOptions, setFormattingOptions] = useState<FormattingOptions>({
-  enableCodeFormatting: true,
-  defaultLanguage: (initialData as Question)?.codeLanguage || 'javascript'
-});
-const [answerOrder, setAnswerOrder] = useState<string[]>([]);
-const [isMarkdownSyncing, setIsMarkdownSyncing] = useState(false);
-const questionEditorRef = useRef<HTMLDivElement | null>(null);
-const answerEditorRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [answers, setAnswers] = useState<Answer[]>([
+    { id: '1', text: '', isCorrect: false },
+    { id: '2', text: '', isCorrect: false },
+    { id: '3', text: '', isCorrect: false },
+    { id: '4', text: '', isCorrect: false }
+  ]);
+  const [difficulty, setDifficulty] = useState(1);
+  const [tags, setTags] = useState<string[]>([]);
+  const [showMarkdown, setShowMarkdown] = useState(false);
+  const [markdownContent, setMarkdownContent] = useState('');
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [formattingOptions, setFormattingOptions] = useState<FormattingOptions>({
+    enableCodeFormatting: true,
+    defaultLanguage: (initialData as Question)?.codeLanguage || 'javascript'
+  });
+  const [answerOrder, setAnswerOrder] = useState<string[]>([]);
+  const [isMarkdownSyncing, setIsMarkdownSyncing] = useState(false);
+  const questionEditorRef = useRef<HTMLDivElement | null>(null);
+  const answerEditorRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-const lastSyncedMarkdownRef = useRef<string>('');
-const [rawContent, setRawContent] = useState({
-  question: '',
-  answers: [] as Answer[]
-});
+  const lastSyncedMarkdownRef = useRef<string>('');
+  const [rawContent, setRawContent] = useState({
+    question: '',
+    answers: [] as Answer[]
+  });
+
   useEffect(() => {
     if (answers.length > 0 && answerOrder.length === 0) {
       setAnswerOrder(answers.map(a => a.id));
@@ -251,52 +251,37 @@ const [rawContent, setRawContent] = useState({
   };
   
   const handleFormatText = (formattedText: string, language: 'javascript' | 'html') => {
-    const activeId = document.activeElement?.id;
-    
-    if (activeId === 'question-editor') {
-      const updatedQuestion = question + `\n\`\`\`${language}\n${formattedText}\n\`\`\`\n`;
-      setQuestion(updatedQuestion);
-    } else if (activeId?.startsWith('answer-editor-')) {
-      const answerIndex = parseInt(activeId.replace('answer-editor-', ''));
-      if (!isNaN(answerIndex) && answerIndex >= 0 && answerIndex < answers.length) {
-        const updatedAnswers = [...answers];
-        const answer = updatedAnswers[answerIndex];
-        updatedAnswers[answerIndex] = {
-          ...answer,
-          text: answer.text + `\n\`\`\`${language}\n${formattedText}\n\`\`\`\n`
-        };
-        setAnswers(updatedAnswers);
-      }
+    if (language !== formattingOptions.defaultLanguage) {
+      handleLanguageChange(language);
     }
   };
 
-const handleQuestionChange = (newQuestion: string) => {
+  const handleQuestionChange = (newQuestion: string) => {
+    const cleanedQuestion = newQuestion.replace(/<[^>]*>?/gm, '');
+    setQuestion(cleanedQuestion);
+    
+    if (!formattingOptions.enableCodeFormatting) {
+      setRawContent(prev => ({
+        ...prev,
+        question: cleanedQuestion
+      }));
+    }
+  };
 
-  const cleanedQuestion = newQuestion.replace(/<[^>]*>?/gm, '');
-  setQuestion(cleanedQuestion);
-  
-  if (!formattingOptions.enableCodeFormatting) {
-    setRawContent(prev => ({
-      ...prev,
-      question: cleanedQuestion
-    }));
-  }
-};
-
-const handleAnswerChange = (index: number, newText: string) => {
-  const cleanedText = newText.replace(/<[^>]*>?/gm, '');
-  
-  const newAnswers = [...answers];
-  newAnswers[index] = { ...answers[index], text: cleanedText };
-  setAnswers(newAnswers);
-  
-  if (!formattingOptions.enableCodeFormatting) {
-    setRawContent(prev => ({
-      ...prev,
-      answers: newAnswers
-    }));
-  }
-};
+  const handleAnswerChange = (index: number, newText: string) => {
+    const cleanedText = newText.replace(/<[^>]*>?/gm, '');
+    
+    const newAnswers = [...answers];
+    newAnswers[index] = { ...answers[index], text: cleanedText };
+    setAnswers(newAnswers);
+    
+    if (!formattingOptions.enableCodeFormatting) {
+      setRawContent(prev => ({
+        ...prev,
+        answers: newAnswers
+      }));
+    }
+  };
 
   const handleLanguageChange = (newLanguage: 'javascript' | 'html') => {
     setFormattingOptions(prev => ({
@@ -549,8 +534,7 @@ const handleAnswerChange = (index: number, newText: string) => {
                 onLanguageChange={handleLanguageChange}
               />
 
-
-            <div className="space-y-2">
+            <div className="space-y-2" ref={questionEditorRef}>
               <TextEditor 
                 label="Question"
                 value={question}
@@ -575,38 +559,53 @@ const handleAnswerChange = (index: number, newText: string) => {
                 </button>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {answers.map((answer, index) => (
-                  <div key={answer.id} className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`answer-${index}`}
-                        checked={answer.isCorrect}
-                        onChange={() => {
-                          const newAnswers = answers.map((ans, i) => ({
-                            ...ans,
-                            isCorrect: i === index
-                          }));
-                          setAnswers(newAnswers);
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                {answers.map((answer, index) => {
+                  
+                  if (answerEditorRefs.current && answerEditorRefs.current.length <= index) {
+                    answerEditorRefs.current.push(null);
+                  }
+                  
+                  return (
+                    <div 
+                      key={answer.id} 
+                      className="space-y-2" 
+                      ref={el => {
+                        if (answerEditorRefs.current) {
+                          answerEditorRefs.current[index] = el;
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`answer-${index}`}
+                          checked={answer.isCorrect}
+                          onChange={() => {
+                            const newAnswers = answers.map((ans, i) => ({
+                              ...ans,
+                              isCorrect: i === index
+                            }));
+                            setAnswers(newAnswers);
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <label 
+                          htmlFor={`answer-${index}`}
+                          className="text-sm font-medium text-gray-700"
+                        >
+                          Answer {String.fromCharCode(65 + index)}
+                        </label>
+                      </div>
+                      <TextEditor
+                        value={answer.text}
+                        onChange={(newText) => handleAnswerChange(index, newText)}
+                        placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
+                        rows={2}
+                        id={`answer-editor-${index}`}
                       />
-                      <label 
-                        htmlFor={`answer-${index}`}
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        Answer {String.fromCharCode(65 + index)}
-                      </label>
                     </div>
-                    <TextEditor
-                      value={answer.text}
-                      onChange={(newText) => handleAnswerChange(index, newText)}
-                      placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
-                      rows={2}
-                      id={`answer-editor-${index}`}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
