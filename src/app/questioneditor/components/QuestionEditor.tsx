@@ -6,7 +6,7 @@ import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
-import TextSelectionFormatter from '@/app/components/TextSelectionFormatter';
+import TextSelectionFormatter from './TextSelectionFormatter';
 import MarkdownPreview from './MarkdownPreview';
 import TextEditor from './TextEditor';
 
@@ -532,7 +532,7 @@ const handleAnswerChange = (index: number, newText: string) => {
             </div>
 
             <TextSelectionFormatter 
-                questionRef={questionEditorRef} 
+                questionRef={questionEditorRef}  
                 answerRefs={answerEditorRefs}    
                 onFormat={handleFormatText}
                 currentQuestion={{

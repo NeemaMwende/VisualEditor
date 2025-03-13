@@ -69,6 +69,7 @@ const TextEditor: React.FC<TextEditorProps> = ({
         <div className="p-3 bg-white" style={{ minHeight: `${rows * 24}px` }}>
           <EditorContent editor={editor} />
         </div>
+
       </div>
     </div>
   );

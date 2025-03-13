@@ -20,10 +20,9 @@ interface CurrentQuestion {
   tags: string[];
   title: string;
 }
-
 interface TextSelectionFormatterProps {
   questionRef: React.RefObject<HTMLDivElement | null>; 
-  answerRefs: React.RefObject<(HTMLDivElement | null)[]>; 
+  answerRefs: React.RefObject<(HTMLDivElement | null)[]>;
   onFormat: (formattedText: string, language: 'javascript' | 'html') => void;
   currentQuestion: CurrentQuestion;
   onQuestionChange: (question: string) => void;
@@ -47,6 +46,7 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
   const handleFormatButtonClick = () => {
     const selectedText = getSelectedText();
     if (selectedText) {
+
       onFormat(selectedText, formattingOptions.defaultLanguage);
     }
   };
