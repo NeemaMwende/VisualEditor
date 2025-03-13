@@ -148,7 +148,7 @@ body {
 .editor-toolbar {
   position: sticky;
   top: 0;
-  background: white;
+  /* background: white; */
   z-index: 10;
   border-bottom: 1px solid #e5e7eb;
 }

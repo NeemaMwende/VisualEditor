@@ -10,6 +10,8 @@ import {
   AlignRight,
   List,
   ListOrdered,
+  ClipboardCopy,
+  Scissors,
 } from "lucide-react";
 
 interface FormatToolbarProps {
@@ -20,6 +22,21 @@ const FormatToolbar: React.FC<FormatToolbarProps> = ({ editor }) => {
   if (!editor) {
     return null;
   }
+
+  const handleCopy = () => {
+    const text = editor.getText();
+    navigator.clipboard.writeText(text).then(() => {
+      // alert("Text copied!");
+    });
+  };
+
+  const handleCut = () => {
+    const text = editor.getText();
+    navigator.clipboard.writeText(text).then(() => {
+      editor.commands.deleteSelection();
+      // alert("Text cut!");
+    });
+  };
 
   return (
     <div className="flex flex-wrap gap-1 p-1 border-b editor-toolbar">
@@ -118,6 +135,28 @@ const FormatToolbar: React.FC<FormatToolbarProps> = ({ editor }) => {
         title="Ordered List"
       >
         <ListOrdered size={16} />
+      </button>
+
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+      {/* Copy Button */}
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-1 rounded hover:bg-gray-100"
+        title="Copy"
+      >
+        <ClipboardCopy size={16} />
+      </button>
+
+      {/* Cut Button */}
+      <button
+        type="button"
+        onClick={handleCut}
+        className="p-1 rounded hover:bg-gray-100"
+        title="Cut"
+      >
+        <Scissors size={16} />
       </button>
     </div>
   );
