@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FaUndo } from "react-icons/fa";
 
 interface TextSelectionFormatterProps {
-  questionRef: React.RefObject<HTMLTextAreaElement | null>;
-  answerRefs: React.RefObject<(HTMLTextAreaElement | null)[]>; 
+  questionRef: React.RefObject<HTMLDivElement | null>; 
+  answerRefs: React.RefObject<(HTMLDivElement | null)[]>;
   onFormat: (formattedText: string, language: 'javascript' | 'html') => void;
   currentQuestion: {
     question: string;
@@ -30,7 +30,7 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
   onQuestionChange,
   onAnswerChange,
   formattingOptions,
-  //onFormatToggle,
+ // onFormatToggle,
   onLanguageChange
 }) => {
   const [format, setFormat] = useState<'javascript' | 'html'>(formattingOptions.defaultLanguage);
@@ -52,131 +52,63 @@ const TextSelectionFormatter: React.FC<TextSelectionFormatterProps> = ({
     );
   };
 
-  const getSelectedText = (): {
-    text: string | null;
-    type: 'question' | 'answer' | null;
-    index?: number;
-    fullText?: string;
-    selectionStart?: number;
-    selectionEnd?: number;
-  } => {
-    if (questionRef.current) {
-      const start = questionRef.current.selectionStart;
-      const end = questionRef.current.selectionEnd;
-      const selectedText = questionRef.current.value.slice(start, end);
-      if (selectedText.trim()) {
-        return { 
-          text: selectedText, 
-          type: 'question',
-          fullText: questionRef.current.value,
-          selectionStart: start,
-          selectionEnd: end 
-        };
-      }
-    }
-
-    if (answerRefs.current) {
-      for (let i = 0; i < answerRefs.current.length; i++) {
-        const textarea = answerRefs.current[i];
-        if (textarea) {
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const selectedText = textarea.value.slice(start, end);
-          if (selectedText.trim()) {
-            return { 
-              text: selectedText, 
-              type: 'answer', 
-              index: i,
-              fullText: textarea.value,
-              selectionStart: start,
-              selectionEnd: end 
-            };
-          }
-        }
-      }
-    }
-
-    return { text: null, type: null };
-  };
-
   const handleTextFormat = () => {
     if (!formattingOptions.enableCodeFormatting) {
-      alert("Please enable code formatting to add code blocks.");
       return;
     }
-
-    const selectedInfo = getSelectedText();
-
-    if (!selectedInfo.text) {
-      alert("Please select some text to format.");
+    
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.toString().trim() === '') {
       return;
     }
 
     setPreviousState({
       question: currentQuestion.question,
-      answers: currentQuestion.answers,
+      answers: [...currentQuestion.answers],
     });
 
-    const formatText = (text: string, start: number, end: number, fullText: string) => {
-      const formattedContent = `\`\`\`${format}\n${text}\n\`\`\``;
-      return fullText.slice(0, start) + formattedContent + fullText.slice(end);
-    };
+    const selectedText = selection.toString().trim();
+    const formattedCode = `\`\`\`${format}\n${selectedText}\n\`\`\``;
 
-    if (selectedInfo.type === 'question' && selectedInfo.fullText) {
-      const updatedQuestion = formatText(
-        selectedInfo.text,
-        selectedInfo.selectionStart!,
-        selectedInfo.selectionEnd!,
-        selectedInfo.fullText
-      );
-      onQuestionChange(updatedQuestion);
-    } else if (
-      selectedInfo.type === 'answer' &&
-      selectedInfo.index !== undefined &&
-      selectedInfo.fullText
-    ) {
-      const updatedAnswers = currentQuestion.answers.map((answer, index) => {
-        if (index === selectedInfo.index) {
-          return {
-            ...answer,
-            text: formatText(
-              selectedInfo.text!,
-              selectedInfo.selectionStart!,
-              selectedInfo.selectionEnd!,
-              selectedInfo.fullText!
-            ),
-          };
+    let isQuestionSelected = false;
+    let selectedAnswerIndex = -1;
+
+    // Check if selection is in question editor
+    if (questionRef.current && questionRef.current.contains(selection.anchorNode)) {
+      isQuestionSelected = true;
+    } else {
+      answerRefs.current?.forEach((answerRef, index) => {
+        if (answerRef && answerRef.contains(selection.anchorNode)) {
+          selectedAnswerIndex = index;
         }
-        return answer;
       });
+    }
+
+    if (isQuestionSelected) {
+
+      const updatedQuestion = replaceSelectedInText(currentQuestion.question, selectedText, formattedCode);
+      onQuestionChange(updatedQuestion);
+    } else if (selectedAnswerIndex !== -1) {
+      const updatedAnswers = [...currentQuestion.answers];
+      const answerText = updatedAnswers[selectedAnswerIndex].text;
+      updatedAnswers[selectedAnswerIndex] = {
+        ...updatedAnswers[selectedAnswerIndex],
+        text: replaceSelectedInText(answerText, selectedText, formattedCode)
+      };
       onAnswerChange(updatedAnswers);
     }
   };
 
-  // const handleFormatToggle = (enabled: boolean) => {
-  //   if (!enabled) {
-  //     // Remove code blocks when disabling formatting
-  //     const updatedQuestion = removeCodeBlocks(currentQuestion.question);
-  //     const updatedAnswers = currentQuestion.answers.map(answer => ({
-  //       ...answer,
-  //       text: removeCodeBlocks(answer.text)
-  //     }));
-
-  //     onQuestionChange(updatedQuestion);
-  //     onAnswerChange(updatedAnswers);
-  //   } else {
-  //     // Restore code blocks with current format when enabling
-  //     const updatedQuestion = updateFormatting(currentQuestion.question, format);
-  //     const updatedAnswers = currentQuestion.answers.map(answer => ({
-  //       ...answer,
-  //       text: updateFormatting(answer.text, format)
-  //     }));
-
-  //     onQuestionChange(updatedQuestion);
-  //     onAnswerChange(updatedAnswers);
-  //   }
-  //   onFormatToggle(enabled);
-  // };
+  // Helper function to replace text while preserving the rest of the content
+  const replaceSelectedInText = (text: string, selectedText: string, replacement: string): string => {
+    if (!text.includes(selectedText)) {
+      return text + '\n' + replacement; 
+    }
+    
+    const before = text.substring(0, text.indexOf(selectedText));
+    const after = text.substring(text.indexOf(selectedText) + selectedText.length);
+    return before + replacement + after;
+  };
 
   const handleLanguageChange = (newFormat: 'javascript' | 'html') => {
     setFormat(newFormat);

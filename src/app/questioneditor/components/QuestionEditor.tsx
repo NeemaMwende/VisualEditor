@@ -1,4 +1,3 @@
-"use client"
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ArrowLeft, Shuffle, Settings } from 'lucide-react';
 import { generateMarkdown, parseMarkdownContent, synchronizeMarkdownFormatting } from '../../../utils/markdownUtils';
@@ -6,8 +5,10 @@ import { EditorQuestion } from '@/app/components/Interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import TagSelector from './TagSelector';
 import { MarkdownData } from '@/app/components/Interfaces';
-import TextSelectionFormatter from '@/app/components/TextSelectionFormatter';
+import TextSelectionFormatter from '../../components/TextSelectionFormatter';
 import MarkdownPreview from './MarkdownPreview';
+import TextEditor from './TextEditor';
+
 interface QuestionEditorProps {
   onSave: (data: Question) => void;
   onBack: () => void;
@@ -69,22 +70,21 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   });
   const [answerOrder, setAnswerOrder] = useState<string[]>([]);
   const [isMarkdownSyncing, setIsMarkdownSyncing] = useState(false);
-  const questionRef = useRef<HTMLTextAreaElement>(null);
-  const answerRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const questionEditorRef = useRef<HTMLDivElement | null>(null);
+  const answerEditorRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   const lastSyncedMarkdownRef = useRef<string>('');
   const [rawContent, setRawContent] = useState({
     question: '',
     answers: [] as Answer[]
   });
-  
-  // Initialize answer order
+
   useEffect(() => {
     if (answers.length > 0 && answerOrder.length === 0) {
       setAnswerOrder(answers.map(a => a.id));
     }
   }, [answers]);
 
-  // Load initial data
   useEffect(() => {
     if (isEditing && initialData) {
       const initialAnswers = (initialData.answers || []).map((answer) => ({
@@ -100,13 +100,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       setTitle(initialData.title || '');
       setTags(initialData.tags || []);
       
-      // Store raw content
       setRawContent({
         question: initialData.question || '',
         answers: initialAnswers
       });
       
-      // Set initial markdown content
       const initialMarkdown = (initialData as Question).markdownContent || generateMarkdown(
         {
           id: initialData?.id || uuidv4(),
@@ -125,7 +123,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
       setMarkdownContent(initialMarkdown);
       lastSyncedMarkdownRef.current = initialMarkdown;
 
-      // Set formatting options
       if ((initialData as Question).codeLanguage) {
         setFormattingOptions((prev) => ({
           ...prev,
@@ -136,7 +133,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   }, [initialData, isEditing]);
 
-  // Sync markdown when content changes
   useEffect(() => {
     if (!isMarkdownSyncing) {
       const newMarkdown = generateMarkdown(
@@ -159,7 +155,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         lastSyncedMarkdownRef.current = newMarkdown;
       }
     }
-  }, [question, answers, difficulty, tags, title, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage, isMarkdownSyncing]);
+  }, [question, answers, difficulty, tags, title, formattingOptions.enableCodeFormatting, formattingOptions.defaultLanguage, isMarkdownSyncing, initialData]);
 
   const handleMarkdownUpdate = (newContent: string) => {
     if (newContent === lastSyncedMarkdownRef.current) return;
@@ -195,7 +191,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     }
   };
   
-const handleFormatToggle = (enableFormatting: boolean) => {
+  const handleFormatToggle = (enableFormatting: boolean) => {
     setFormattingOptions(prev => ({
       ...prev,
       enableCodeFormatting: enableFormatting,
@@ -207,7 +203,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
         answers: [...answers]
       });
       
-      // Remove code blocks when disabling formatting
       const cleanQuestion = question.replace(/```(?:javascript|html)?\n([\s\S]*?)\n```/g, '$1').trim();
       const cleanAnswers = answers.map(answer => ({
         ...answer,
@@ -217,7 +212,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       setQuestion(cleanQuestion);
       setAnswers(cleanAnswers);
     } else {
-      // If we're turning formatting on, use the stored raw content
       const formattedQuestion = synchronizeMarkdownFormatting(
         rawContent.question || question,
         true,
@@ -237,7 +231,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       setAnswers(formattedAnswers);
     }
 
-    // Update markdown content
     const updatedMarkdown = generateMarkdown(
       {
         id: initialData?.id || uuidv4(),
@@ -258,46 +251,29 @@ const handleFormatToggle = (enableFormatting: boolean) => {
   };
   
   const handleFormatText = (formattedText: string, language: 'javascript' | 'html') => {
-    const activeElement = document.activeElement as HTMLTextAreaElement;
-    const selectionStart = activeElement?.selectionStart || 0;
-    const selectionEnd = activeElement?.selectionEnd || 0;
-    
-    if (activeElement === questionRef.current) {
-      const updatedQuestion = 
-        question.slice(0, selectionStart) + 
-        `\n\`\`\`${language}\n${formattedText}\n\`\`\`\n` + 
-        question.slice(selectionEnd);
-      setQuestion(updatedQuestion);
-    } else {
-      const answerIndex = answerRefs.current.findIndex(ref => ref === activeElement);
-      if (answerIndex !== -1) {
-        const updatedAnswers = [...answers];
-        const answer = updatedAnswers[answerIndex];
-        updatedAnswers[answerIndex] = {
-          ...answer,
-          text: 
-            answer.text.slice(0, selectionStart) + 
-            `\n\`\`\`${language}\n${formattedText}\n\`\`\`\n` + 
-            answer.text.slice(selectionEnd)
-        };
-        setAnswers(updatedAnswers);
-      }
+    if (language !== formattingOptions.defaultLanguage) {
+      handleLanguageChange(language);
     }
+    
   };
 
   const handleQuestionChange = (newQuestion: string) => {
-    setQuestion(newQuestion);
+    const cleanedQuestion = newQuestion.replace(/<[^>]*>?/gm, '');
+    setQuestion(cleanedQuestion);
+    
     if (!formattingOptions.enableCodeFormatting) {
       setRawContent(prev => ({
         ...prev,
-        question: newQuestion
+        question: cleanedQuestion
       }));
     }
   };
 
   const handleAnswerChange = (index: number, newText: string) => {
+    const cleanedText = newText.replace(/<[^>]*>?/gm, '');
+    
     const newAnswers = [...answers];
-    newAnswers[index] = { ...answers[index], text: newText };
+    newAnswers[index] = { ...answers[index], text: cleanedText };
     setAnswers(newAnswers);
     
     if (!formattingOptions.enableCodeFormatting) {
@@ -367,7 +343,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      // Removed alert about providing a title
       return;
     }
   
@@ -385,18 +360,15 @@ const handleFormatToggle = (enableFormatting: boolean) => {
     };
   
     try {
-      // Generate markdown content
       const generatedMarkdown = generateMarkdown(
         savedData,
         formattingOptions.enableCodeFormatting,
         formattingOptions.defaultLanguage
       );
   
-      // Save to file system if handle exists
       if (fileSystem?.handle) {
         const filename = `${title.toLowerCase().replace(/\s+/g, "-")}.md`;
   
-        // If editing and title changed, remove old file
         if (isEditing && initialData?.title !== title) {
           const oldFilename = `${initialData?.title
             .toLowerCase()
@@ -410,7 +382,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
           }
         }
   
-        // Save new file
         const fileHandle = await fileSystem.handle.getFileHandle(filename, {
           create: true,
         });
@@ -419,7 +390,6 @@ const handleFormatToggle = (enableFormatting: boolean) => {
         await writable.close();
       }
   
-      // Save to local storage
       const existingQuestions = JSON.parse(
         localStorage.getItem("questions") || "[]"
       );
@@ -431,10 +401,8 @@ const handleFormatToggle = (enableFormatting: boolean) => {
       localStorage.setItem("questions", JSON.stringify(updatedQuestions));
   
       onSave(savedData);
-      // Removed success alert
     } catch (error) {
       console.error("Error saving:", error);
-      // Removed error alert
     }
   };
   
@@ -550,34 +518,31 @@ const handleFormatToggle = (enableFormatting: boolean) => {
             </div>
 
             <TextSelectionFormatter 
-              questionRef={questionRef}
-              answerRefs={answerRefs}
-              onFormat={handleFormatText}
-              currentQuestion={{
-                question,
-                answers,
-                difficulty,
-                tags,
-                title
-              }}
-              onQuestionChange={setQuestion}
-              onAnswerChange={setAnswers}
-              formattingOptions={formattingOptions}
-              onFormatToggle={handleFormatToggle}
-              onLanguageChange={handleLanguageChange}
-            />
+                questionRef={questionEditorRef}  
+                answerRefs={answerEditorRefs}    
+                onFormat={handleFormatText}
+                currentQuestion={{
+                  question,
+                  answers,
+                  difficulty,
+                  tags,
+                  title
+                }}
+                onQuestionChange={setQuestion}
+                onAnswerChange={setAnswers}
+                formattingOptions={formattingOptions}
+                onFormatToggle={handleFormatToggle}
+                onLanguageChange={handleLanguageChange}
+              />
 
-            <div className="space-y-2">
-              <label className="block text-gray-700 text-sm font-bold">
-                Question
-              </label>
-              <textarea
+            <div className="space-y-2" ref={questionEditorRef}>
+              <TextEditor 
+                label="Question"
                 value={question}
-                ref={questionRef}
-                onChange={(e) => handleQuestionChange(e.target.value)}
-                className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
+                onChange={handleQuestionChange}
                 placeholder="Enter your question here"
+                rows={5}
+                id="question-editor"
               />
             </div>
 
@@ -595,41 +560,53 @@ const handleFormatToggle = (enableFormatting: boolean) => {
                 </button>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {answers.map((answer, index) => (
-                  <div key={answer.id} className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`answer-${index}`}
-                        checked={answer.isCorrect}
-                        onChange={() => {
-                          const newAnswers = answers.map((ans, i) => ({
-                            ...ans,
-                            isCorrect: i === index
-                          }));
-                          setAnswers(newAnswers);
-                        }}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <label 
-                        htmlFor={`answer-${index}`}
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        Answer {String.fromCharCode(65 + index)}
-                      </label>
-                    </div>
-                    <textarea
-                      ref={(el) => {
-                        answerRefs.current[index] = el;
+                {answers.map((answer, index) => {
+          
+                  if (answerEditorRefs.current && answerEditorRefs.current.length <= index) {
+                    answerEditorRefs.current.push(null);
+                  }
+                  
+                  return (
+                    <div 
+                      key={answer.id} 
+                      className="space-y-2" 
+                      ref={el => {
+                        if (answerEditorRefs.current) {
+                          answerEditorRefs.current[index] = el;
+                        }
                       }}
-                      value={answer.text}
-                      onChange={(e) => handleAnswerChange(index, e.target.value)}
-                      className="w-full p-2 sm:p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={2}
-                      placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
-                    />
-                  </div>
-                ))}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`answer-${index}`}
+                          checked={answer.isCorrect}
+                          onChange={() => {
+                            const newAnswers = answers.map((ans, i) => ({
+                              ...ans,
+                              isCorrect: i === index
+                            }));
+                            setAnswers(newAnswers);
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <label 
+                          htmlFor={`answer-${index}`}
+                          className="text-sm font-medium text-gray-700"
+                        >
+                          Answer {String.fromCharCode(65 + index)}
+                        </label>
+                      </div>
+                      <TextEditor
+                        value={answer.text}
+                        onChange={(newText) => handleAnswerChange(index, newText)}
+                        placeholder={`Enter answer ${String.fromCharCode(65 + index)}`}
+                        rows={5}
+                        id={`answer-editor-${index}`}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
