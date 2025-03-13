@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import FormatToolbar from "./FormatToolbar";
+import TextAlign from "@tiptap/extension-text-align";
 
 interface TextEditorProps {
   value: string;
@@ -27,13 +28,13 @@ const TextEditor: React.FC<TextEditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // Configure to preserve markdown content
         codeBlock: {
           HTMLAttributes: {
             class: 'code-block',
           },
         },
       }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       Underline,
     ],
     content: value,
