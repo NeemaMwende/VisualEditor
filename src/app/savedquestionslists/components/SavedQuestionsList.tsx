@@ -78,8 +78,6 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         return (await handle.requestPermission(options)) === 'granted';
       }
       
-      // If requestPermission doesn't exist, we'll assume permission is granted
-      // This handles potential browser compatibility issues
       return true;
     } catch (error) {
       console.error('Error verifying permission:', error);
@@ -154,9 +152,13 @@ const SavedQuestionsList: React.FC<SavedQuestionsListProps> = ({
         }
       }
       setQuestions(loadedQuestions);
-      setSelectedQuestions([]); // Clear selections after refresh
+      setSelectedQuestions([]);
     } catch (error) {
-      console.error('Error refreshing directory:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Directory refresh was cancelled by the user');
+      } else {
+        console.error('Error refreshing directory:', error);
+      }
     } finally {
       setIsRefreshing(false);
     }

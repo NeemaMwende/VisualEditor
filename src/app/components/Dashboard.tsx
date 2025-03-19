@@ -129,10 +129,8 @@ const Dashboard = () => {
 
     setIsLoading(true);
     try {
-        // Always prompt the user to select a new directory
         const handle = await window.showDirectoryPicker();
 
-        // Verify we have permission
         const hasPermission = await verifyPermission(handle);
         if (!hasPermission) {
             throw new Error("Permission denied");
@@ -145,7 +143,6 @@ const Dashboard = () => {
         for await (const entry of handle.values()) {
             if (entry.kind === "file" && entry.name.endsWith(".md")) {
                 try {
-                
                     const fileHandle = entry as FileSystemFileHandle;
                     const file = await fileHandle.getFile();
                     const content = await file.text();
@@ -172,7 +169,9 @@ const Dashboard = () => {
 
         setQuestions(loadedQuestions);
     } catch (error: unknown) {
-        if (error instanceof Error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            console.log('Directory selection was cancelled by the user');
+        } else if (error instanceof Error) {
             await handleFileSystemError(error);
         }
     } finally {
