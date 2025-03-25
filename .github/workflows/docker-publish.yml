@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: write
-  # releases: write
   pull-requests: write
 
 jobs:
@@ -58,31 +57,60 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Create Release Tag
+        with:
+          fetch-depth: 0
+
+      - name: Get latest version tag
+        id: get_version
         run: |
-          # Define the version manually
-          VERSION="1.0"
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           
-          # Create and push the tag
-          git config user.name github-actions
-          git config user.email github-actions@github.com
+          # Extract major, minor, and patch numbers
+          VERSION_PARTS=(${LATEST_TAG//./ })
+          MAJOR=${VERSION_PARTS[0]//[!0-9]/}  # Remove 'v' prefix
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
           
-          git tag -a v$VERSION -m "Release version $VERSION"
-          git push origin v$VERSION
-      
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          
+          # Output the new version
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "New version: $NEW_VERSION"
+
+      - name: Generate changelog
+        run: |
+          # Get commits since last tag
+          CHANGELOG=$(git log $(git describe --tags --abbrev=0 2>/dev/null)..HEAD --pretty=format:"- %s")
+
+          # If no commits, use default message
+          if [[ -z "$CHANGELOG" ]]; then
+            CHANGELOG="- No new changes"
+          fi
+
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create and push new tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git tag -a v${{ env.NEW_VERSION }} -m "Release v${{ env.NEW_VERSION }}"
+          git push origin v${{ env.NEW_VERSION }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0
-          name: Release 1.0
+          tag_name: v${{ env.NEW_VERSION }}
+          name: Release v${{ env.NEW_VERSION }}
           body: |
             ## Changelog
-            - Initial release
+            ${{ env.CHANGELOG }}
           draft: false
           prerelease: false
 
-      
       - name: Deploy to Vercel
         run: |
           npm install -g vercel
