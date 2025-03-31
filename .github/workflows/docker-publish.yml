@@ -20,30 +20,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+          
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+          
       - name: Install dependencies
         run: npm ci
-      
+          
       - name: Run tests
         run: npm test
-      
+          
       - name: Build project
         run: npm run build
-      
+          
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+          
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      
+          
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -59,58 +59,146 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Get latest version tag
-        id: get_version
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci
+          
+      - name: Determine version bump type
+        id: determine_version
         run: |
-          # Get the latest tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Get all commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          
+          # Check for breaking changes
+          if git log $LAST_TAG..HEAD --pretty=format:"%s %b" | grep -i "BREAKING CHANGE:"; then
+            echo "BUMP_TYPE=major" >> $GITHUB_ENV
+            echo "Found breaking change - will perform major version bump"
+          # Check for features
+          elif git log $LAST_TAG..HEAD --pretty=format:"%s" | grep -E "^feat(\([^)]+\))?:"; then
+            echo "BUMP_TYPE=minor" >> $GITHUB_ENV
+            echo "Found new feature - will perform minor version bump"
+          # Default to patch
+          else
+            echo "BUMP_TYPE=patch" >> $GITHUB_ENV
+            echo "No breaking changes or features - will perform patch version bump"
+          fi
+          
+      - name: Get current version and calculate new version
+        id: calc_version
+        run: |
+          # Get the latest tag, or use a default if none exist
+          LATEST_TAG=$(git tag --sort=-v:refname | head -n 1 || echo "v0.0.0")
+          
+          # Ensure LATEST_TAG is in valid format
+          if [[ ! "$LATEST_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            LATEST_TAG="v0.0.0"
+          fi
           
           # Extract major, minor, and patch numbers
-          VERSION_PARTS=(${LATEST_TAG//./ })
-          MAJOR=${VERSION_PARTS[0]//[!0-9]/}  # Remove 'v' prefix
-          MINOR=${VERSION_PARTS[1]}
-          PATCH=${VERSION_PARTS[2]}
+          LATEST_TAG=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
           
-          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          
-          # Output the new version
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-          echo "New version: $NEW_VERSION"
-
-      - name: Generate changelog
-        run: |
-          # Get commits since last tag
-          CHANGELOG=$(git log $(git describe --tags --abbrev=0 2>/dev/null)..HEAD --pretty=format:"- %s")
-
-          # If no commits, use default message
-          if [[ -z "$CHANGELOG" ]]; then
-            CHANGELOG="- No new changes"
+          # Calculate new version based on bump type
+          if [[ "$BUMP_TYPE" == "major" ]]; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif [[ "$BUMP_TYPE" == "minor" ]]; then
+            NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+          else
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
           fi
-
+          
+          # Ensure new version doesn't already exist
+          if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
+            echo "ERROR: Tag v$NEW_VERSION already exists. Exiting..."
+            exit 1
+          fi
+          
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "Current version: v$LATEST_TAG, New version: v$NEW_VERSION ($BUMP_TYPE bump)"
+          
+      - name: Generate changelog by commit type
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          # Function to get commits of a specific type
+          get_commits() {
+            local pattern=$1
+            local title=$2
+            local commits=$(git log $LAST_TAG..HEAD --pretty=format:"- %s (%h)" | grep -E "$pattern" || echo "")
+            
+            if [ ! -z "$commits" ]; then
+              echo "### $title"
+              echo "$commits" | sed -E "s/$pattern//"
+              echo ""
+            fi
+          }
+          
+          # Start building the changelog
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "## Changes in v${{ env.NEW_VERSION }}" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          
+          # Get breaking changes
+          BREAKING=$(get_commits "^.*(BREAKING CHANGE:).*$|^.*!:.*$" "⚠️ BREAKING CHANGES")
+          if [ ! -z "$BREAKING" ]; then
+            echo "$BREAKING" >> $GITHUB_ENV
+          fi
+          
+          # Get features
+          FEATURES=$(get_commits "^feat(\([^)]+\))?:" "✨ Features")
+          if [ ! -z "$FEATURES" ]; then
+            echo "$FEATURES" >> $GITHUB_ENV
+          fi
+          
+          # Get fixes
+          FIXES=$(get_commits "^fix(\([^)]+\))?:" "🐛 Bug Fixes")
+          if [ ! -z "$FIXES" ]; then
+            echo "$FIXES" >> $GITHUB_ENV
+          fi
+          
+          # Get documentation updates
+          DOCS=$(get_commits "^docs(\([^)]+\))?:" "📚 Documentation")
+          if [ ! -z "$DOCS" ]; then
+            echo "$DOCS" >> $GITHUB_ENV
+          fi
+          
+          # Get other changes
+          OTHER=$(git log $LAST_TAG..HEAD --pretty=format:"- %s (%h)" | grep -Ev "^feat(\([^)]+\))?:|^fix(\([^)]+\))?:|^docs(\([^)]+\))?:|^.*(BREAKING CHANGE:).*$|^.*!:.*$" || echo "")
+          if [ ! -z "$OTHER" ]; then
+            echo "### 🔄 Other Changes" >> $GITHUB_ENV
+            echo "$OTHER" >> $GITHUB_ENV
+            echo "" >> $GITHUB_ENV
+          fi
+          
+          # If no commits, use default message
+          if [ -z "$BREAKING$FEATURES$FIXES$DOCS$OTHER" ]; then
+            echo "- No new changes" >> $GITHUB_ENV
+          fi
+          
           echo "EOF" >> $GITHUB_ENV
-
+          
       - name: Create and push new tag
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
+          
           git tag -a v${{ env.NEW_VERSION }} -m "Release v${{ env.NEW_VERSION }}"
           git push origin v${{ env.NEW_VERSION }}
-
+          
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.NEW_VERSION }}
           name: Release v${{ env.NEW_VERSION }}
-          body: |
-            ## Changelog
-            ${{ env.CHANGELOG }}
+          body: ${{ env.CHANGELOG }}
           draft: false
           prerelease: false
-
+          
       - name: Deploy to Vercel
         run: |
           npm install -g vercel
